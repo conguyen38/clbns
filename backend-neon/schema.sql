@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS branches (
 CREATE TABLE IF NOT EXISTS checkpoints (
   checkpoint_id     text PRIMARY KEY,
   checkpoint_name   text NOT NULL,
+  address           text NOT NULL DEFAULT '',
   lat               double precision NOT NULL,
   long              double precision NOT NULL,
   radius_m          integer NOT NULL DEFAULT 100

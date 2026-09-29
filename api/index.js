@@ -146,14 +146,14 @@ ACTIONS.adminCreateCheckpoint = async (pool, data) => {
   if (!checkpoint_name || !lat || !long) throw new Error('Thiếu thông tin điểm checkin.');
   const id = require('crypto').randomUUID();
   await pool.query(
-    'INSERT INTO checkpoints (checkpoint_id, checkpoint_name, lat, long, radius_m) VALUES ($1,$2,$3,$4,$5)',
-    [id, checkpoint_name, Number(lat), Number(long), Number(radius_m) || 100]
+    'INSERT INTO checkpoints (checkpoint_id, checkpoint_name, address, lat, long, radius_m) VALUES ($1,$2,$3,$4,$5,$6)',
+    [id, checkpoint_name, data.address || '', Number(lat), Number(long), Number(radius_m) || 100]
   );
   return { ok: true };
 };
 
 ACTIONS.adminUpdateCheckpoint = async (pool, data) => {
-  const fields = ['checkpoint_name', 'lat', 'long', 'radius_m'].filter(f => data[f] !== undefined);
+  const fields = ['checkpoint_name', 'address', 'lat', 'long', 'radius_m'].filter(f => data[f] !== undefined);
   if (!fields.length) return { ok: true };
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
   const values = fields.map(f => data[f]);
