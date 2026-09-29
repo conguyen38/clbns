@@ -991,7 +991,7 @@ function renderStHistory() {
   const { pageRows, page, totalPages, total } = sliceForPage(stHistoryRows, stHistoryPage);
   const thumb = r => r.photo_url
     ? `<img class="thumb" src="${r.photo_url}" onclick="openLightbox('${r.photo_url.replace(/'/g,"\\'")}')">`
-    : '<span class="thumb-none">Không có ảnh</span>';
+    : '<span class="thumb-none" title="Không có ảnh">🚫</span>';
   const cardsHtml = '<div class="card history-cards">' + pageRows.map(r => `
     <div class="row">
       <div class="l" style="display:flex;gap:12px;align-items:center;">
