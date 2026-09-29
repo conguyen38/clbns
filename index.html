@@ -394,7 +394,9 @@
       <button class="btn btn-outline" style="margin-top:10px;" onclick="captureGPS()">📡 Bật GPS & lấy vị trí</button>
 
       <label>Bước 2 — Ảnh xác nhận</label>
-      <input type="file" accept="image/*" capture="environment" id="photo-input" onchange="onPhotoSelected(event)">
+      <input type="file" accept="image/*" capture="environment" id="photo-input" onchange="onPhotoSelected(event)" style="display:none;">
+      <label for="photo-input" class="btn btn-outline" style="margin-top:0;">📷 Chọn / chụp ảnh</label>
+      <div class="hint" id="photo-filename">Chưa chọn ảnh</div>
       <img id="photo-preview" class="photo-preview" style="display:none;">
 
       <button class="btn btn-primary" style="margin-top:24px;" id="submit-checkin-btn" disabled onclick="submitCheckinNow()">Ghi nhận checkin</button>
@@ -761,6 +763,7 @@ function goCheckinCapture() {
   document.getElementById('gps-coords').innerText = 'Chưa lấy vị trí';
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-input').value = '';
+  document.getElementById('photo-filename').innerText = 'Chưa chọn ảnh';
   const submitBtn = document.getElementById('submit-checkin-btn');
   submitBtn.disabled = true;
   submitBtn.innerHTML = 'Ghi nhận checkin';
@@ -815,6 +818,7 @@ function compressImage(dataUrl, maxDim, quality) {
 function onPhotoSelected(evt) {
   const file = evt.target.files[0];
   if (!file) return;
+  document.getElementById('photo-filename').innerText = 'Đang xử lý ảnh...';
   const reader = new FileReader();
   reader.onload = async () => {
     let finalSrc = reader.result;
@@ -823,6 +827,7 @@ function onPhotoSelected(evt) {
     state.photoBase64 = finalSrc;
     const img = document.getElementById('photo-preview');
     img.src = finalSrc; img.style.display = 'block';
+    document.getElementById('photo-filename').innerText = `Đã chọn: ${file.name}`;
     checkSubmitReady();
   };
   reader.readAsDataURL(file);
