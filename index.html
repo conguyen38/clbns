@@ -142,6 +142,45 @@
   textarea{resize:vertical;min-height:70px;}
   .hint{font-size:11.5px;color:var(--slate);margin-top:4px;}
 
+  /* Select — flat theme chevron instead of the OS default */
+  select{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    padding-right:38px;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat:no-repeat;
+    background-position:right 14px center;
+    background-size:12px 8px;
+  }
+  select::-ms-expand{display:none;}
+
+  /* Date / time — recolor the native picker glyph toward theme ink instead of default black */
+  input[type="date"],input[type="time"]{cursor:pointer;}
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator{
+    filter:invert(14%) sepia(29%) saturate(3207%) hue-rotate(180deg) brightness(95%) contrast(96%);
+    opacity:0.75;cursor:pointer;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="time"]::-webkit-calendar-picker-indicator:hover{opacity:1;}
+
+  /* Checkbox — themed box instead of the OS default */
+  input[type="checkbox"]{
+    appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    width:19px;height:19px;min-width:19px;padding:0;flex-shrink:0;
+    border:1.5px solid var(--slate-light);border-radius:5px;
+    background:#fff;cursor:pointer;position:relative;
+    transition:background .12s ease,border-color .12s ease;
+  }
+  input[type="checkbox"]:hover{border-color:var(--ink);}
+  input[type="checkbox"]:checked{background:var(--ink);border-color:var(--ink);}
+  input[type="checkbox"]:checked::after{
+    content:"";position:absolute;left:6px;top:2px;
+    width:5px;height:9px;
+    border:solid #fff;border-width:0 2px 2px 0;
+    transform:rotate(40deg);
+  }
+  input[type="checkbox"]:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+
   /* Buttons */
   .btn{display:block;width:100%;text-align:center;padding:14px;border-radius:11px;font-family:'Roboto',sans-serif;font-weight:700;font-size:16px;letter-spacing:0.03em;border:none;cursor:pointer;text-transform:uppercase;}
   .btn-primary{background:var(--ink);color:#fff;}
@@ -834,7 +873,7 @@ async function goMeetingNewForm(prefill) {
   const selectedAttendees = prefill ? String(prefill.attendees || '').split(',').map(s=>s.trim()).filter(Boolean) : [];
   document.getElementById('mn-attendees-list').innerHTML = ATTENDEE_ROLES.map((role, i) => `
     <label style="display:flex;align-items:center;gap:8px;margin:${i===0?'0':'10px'} 0 0;font-weight:400;">
-      <input type="checkbox" value="${role}" ${selectedAttendees.includes(role)?'checked':''} style="width:auto;" class="mn-attendee-cb"> ${role}
+      <input type="checkbox" value="${role}" ${selectedAttendees.includes(role)?'checked':''} class="mn-attendee-cb"> ${role}
     </label>`).join('');
 
   // Chi nhánh — chỉ lấy đúng phạm vi vùng được gán cho user này (không lộ toàn bộ database)
@@ -846,7 +885,7 @@ async function goMeetingNewForm(prefill) {
     document.getElementById('mn-branch-list').innerHTML = scope.branches.length
       ? scope.branches.map((b,i) => `
         <label style="display:flex;align-items:center;gap:8px;margin:${i===0?'0':'10px'} 0 0;font-weight:400;">
-          <input type="checkbox" value="${b.branch_code}" ${selectedBranches.includes(b.branch_code)?'checked':''} style="width:auto;" class="mn-branch-cb" onchange="renderGpsPairing()"> ${b.branch_name} <span class="mono" style="color:var(--slate);font-size:11px;">(${b.region_code})</span>
+          <input type="checkbox" value="${b.branch_code}" ${selectedBranches.includes(b.branch_code)?'checked':''} class="mn-branch-cb" onchange="renderGpsPairing()"> ${b.branch_name} <span class="mono" style="color:var(--slate);font-size:11px;">(${b.region_code})</span>
         </label>`).join('')
       : '<div class="empty" style="padding:14px;">Chưa có chi nhánh nào trong phạm vi vùng được gán.</div>';
   } catch (e) {
