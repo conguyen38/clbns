@@ -68,7 +68,7 @@
     .home-grid .tap-card{margin-bottom:0;flex-direction:column;align-items:flex-start;text-align:left;padding:24px;}
     .home-grid .tap-card .chev{display:none;}
 
-    .pick-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;}
+    .pick-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
     .pick-grid .pick{margin-bottom:0;}
 
     .form-col{max-width:640px;}
@@ -136,7 +136,6 @@
 
   /* Forms */
   label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:14px 0 6px;}
-  label:first-child{margin-top:0;}
   input,select,textarea{width:100%;padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:15px;font-family:'Roboto',sans-serif;color:var(--ink-2);}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
   textarea{resize:vertical;min-height:70px;}
@@ -152,6 +151,21 @@
     background-size:12px 8px;
   }
   select::-ms-expand{display:none;}
+
+  /* Custom dropdown — replaces the native <select> open-list, which the OS
+     renders itself and CSS cannot restyle. The real <select> stays in the
+     DOM (hidden) so existing .value / onchange code keeps working. */
+  .cs-wrap{position:relative;}
+  .cs-wrap select{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;}
+  .cs-trigger{width:100%;text-align:left;padding:12px 38px 12px 13px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:15px;font-family:'Roboto',sans-serif;color:var(--ink-2);cursor:pointer;position:relative;}
+  .cs-trigger::after{content:"";position:absolute;right:14px;top:50%;transform:translateY(-50%);width:12px;height:8px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-size:12px 8px;transition:transform .12s ease;}
+  .cs-wrap.open .cs-trigger{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
+  .cs-wrap.open .cs-trigger::after{transform:translateY(-50%) rotate(180deg);}
+  .cs-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:260px;overflow-y:auto;z-index:50;padding:6px;}
+  .cs-wrap.open .cs-menu{display:block;}
+  .cs-option{padding:10px 12px;border-radius:7px;font-size:14.5px;color:var(--ink-2);cursor:pointer;}
+  .cs-option:hover{background:var(--paper);}
+  .cs-option.selected{background:var(--ink);color:#fff;font-weight:600;}
 
   /* Date / time — recolor the native picker glyph toward theme ink instead of default black */
   input[type="date"],input[type="time"]{cursor:pointer;}
@@ -554,6 +568,62 @@ function banner(elId, type, msg) {
   document.getElementById(elId).innerHTML = msg ? `<div class="banner ${type}">${msg}</div>` : '';
 }
 
+/* ============== CUSTOM SELECT ==============
+   Wraps a native <select> with a themed trigger + option list (the native
+   open-list can't be restyled with CSS). The <select> stays in the DOM,
+   hidden, so existing .value reads / onchange handlers keep working — call
+   buildCustomSelect(el) again any time a select's <option>s are regenerated. */
+function buildCustomSelect(sel) {
+  if (!sel) return;
+  let wrap = sel.parentElement;
+  if (!wrap.classList.contains('cs-wrap')) {
+    wrap = document.createElement('div');
+    wrap.className = 'cs-wrap';
+    sel.parentNode.insertBefore(wrap, sel);
+    wrap.appendChild(sel);
+  }
+  wrap.querySelectorAll('.cs-trigger, .cs-menu').forEach(el => el.remove());
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'cs-trigger';
+
+  const menu = document.createElement('div');
+  menu.className = 'cs-menu';
+
+  function refresh() {
+    const opt = sel.options[sel.selectedIndex];
+    trigger.textContent = opt ? opt.textContent : '';
+    menu.innerHTML = '';
+    Array.from(sel.options).forEach(o => {
+      const item = document.createElement('div');
+      item.className = 'cs-option' + (o.value === sel.value ? ' selected' : '');
+      item.textContent = o.textContent;
+      item.onclick = () => {
+        sel.value = o.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        refresh();
+        wrap.classList.remove('open');
+      };
+      menu.appendChild(item);
+    });
+  }
+
+  trigger.onclick = () => {
+    document.querySelectorAll('.cs-wrap.open').forEach(w => { if (w !== wrap) w.classList.remove('open'); });
+    wrap.classList.toggle('open');
+  };
+
+  refresh();
+  wrap.appendChild(trigger);
+  wrap.appendChild(menu);
+  sel._csRefresh = refresh;
+}
+
+document.addEventListener('click', (e) => {
+  document.querySelectorAll('.cs-wrap.open').forEach(w => { if (!w.contains(e.target)) w.classList.remove('open'); });
+});
+
 function fmtDate(d) {
   if (!d) return '—';
   const dt = new Date(d);
@@ -677,7 +747,9 @@ function goCheckinCapture() {
   document.getElementById('gps-coords').innerText = 'Chưa lấy vị trí';
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-input').value = '';
-  document.getElementById('submit-checkin-btn').disabled = true;
+  const submitBtn = document.getElementById('submit-checkin-btn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = 'Ghi nhận checkin';
   banner('st-checkin-banner', '', '');
   document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
   showScreen('screen-sitetour-checkin');
@@ -897,6 +969,7 @@ async function goMeetingNewForm(prefill) {
   const purSel = document.getElementById('mn-purpose-type');
   purSel.innerHTML = options.map(p => `<option value="${p}">${p}</option>`).join('');
   purSel.value = prefill && options.includes(prefill.purpose_type) ? prefill.purpose_type : options[0];
+  buildCustomSelect(purSel);
   document.getElementById('mn-purpose-other').value = prefill ? (prefill.purpose_other || '') : '';
   onPurposeTypeChange();
 
@@ -1169,9 +1242,12 @@ async function renderAdminAccounts(editUsername) {
     if (editing) {
       document.getElementById('ac-role').value = editing.role;
     }
+    buildCustomSelect(document.getElementById('ac-role'));
     toggleAccountFields();
     if (editing) {
-      document.getElementById('ac-manager').value = editing.manager_username || '';
+      const mgrSel = document.getElementById('ac-manager');
+      mgrSel.value = editing.manager_username || '';
+      if (mgrSel._csRefresh) mgrSel._csRefresh();
     }
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
@@ -1199,6 +1275,7 @@ function toggleAccountFields() {
   sel.innerHTML = candidates.length
     ? candidates.map(a => `<option value="${a.username}">${a.full_name} (@${a.username})</option>`).join('')
     : '<option value="">—</option>';
+  buildCustomSelect(sel);
 }
 
 async function saveAccount(evt) {
@@ -1337,6 +1414,7 @@ async function renderAdminBranchesTab(editCode) {
       </div>`).join('')
       : '<div class="empty">Chưa có chi nhánh nào.</div>') + '</div>';
     wrap.innerHTML = formHtml + listHtml;
+    buildCustomSelect(document.getElementById('br-region'));
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
 }
 
