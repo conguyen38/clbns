@@ -268,8 +268,18 @@
   .gps-box .txt{font-family:'Roboto',sans-serif;font-size:12.5px;color:var(--ink-2);}
   .gps-box .txt .lbl{font-family:'Roboto',sans-serif;font-size:11px;color:var(--slate);display:block;margin-bottom:2px;}
 
+  .progress-wrap{margin-top:12px;display:flex;align-items:center;gap:10px;}
+  .progress-track{flex:1;height:8px;border-radius:6px;background:var(--line);overflow:hidden;}
+  .progress-fill{height:100%;background:var(--amber);width:0%;transition:width .15s ease;border-radius:6px;}
+  .progress-label{font-size:12px;color:var(--slate);min-width:36px;text-align:right;}
+
   .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Loading state — used instead of "Đang tải..." text everywhere; always
+     spans the full row and centers, even inside a grid/table parent. */
+  .loading-block{display:flex;align-items:center;justify-content:center;padding:40px 10px;grid-column:1/-1;width:100%;}
+  .loading-block .spin{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;}
 
   .fab-note{font-size:12px;color:var(--slate);text-align:center;margin-top:14px;}
 </style>
@@ -388,6 +398,10 @@
       <img id="photo-preview" class="photo-preview" style="display:none;">
 
       <button class="btn btn-primary" style="margin-top:24px;" id="submit-checkin-btn" disabled onclick="submitCheckinNow()">Ghi nhận checkin</button>
+      <div class="progress-wrap" id="checkin-progress-wrap" style="display:none;">
+        <div class="progress-track"><div class="progress-fill" id="checkin-progress-fill"></div></div>
+        <div class="progress-label" id="checkin-progress-label">0%</div>
+      </div>
     </div>
   </div>
 
@@ -710,7 +724,7 @@ window.addEventListener('DOMContentLoaded', () => { if (state.user) goHome(); })
 async function goSitetourList() {
   showScreen('screen-sitetour-list');
   banner('st-list-banner', '', '');
-  document.getElementById('st-checkpoint-list').innerHTML = '<div class="empty">Đang tải danh sách điểm...</div>';
+  document.getElementById('st-checkpoint-list').innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const cps = await api('getCheckpointsForUser', { username: state.user.username });
     state.checkpoints = cps;
@@ -750,6 +764,7 @@ function goCheckinCapture() {
   const submitBtn = document.getElementById('submit-checkin-btn');
   submitBtn.disabled = true;
   submitBtn.innerHTML = 'Ghi nhận checkin';
+  setCheckinProgress(0, false);
   banner('st-checkin-banner', '', '');
   document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
   showScreen('screen-sitetour-checkin');
@@ -776,14 +791,38 @@ function captureGPS() {
   }, { enableHighAccuracy: true, timeout: 15000 });
 }
 
+// Ảnh checkin chỉ cần để soát nhanh, không cần zoom/in ấn -> nén mạnh trước khi
+// gửi lên để giảm size payload và tăng tốc submit (đặc biệt trên mạng di động).
+function compressImage(dataUrl, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('Không đọc được ảnh.'));
+    img.src = dataUrl;
+  });
+}
+
 function onPhotoSelected(evt) {
   const file = evt.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = () => {
-    state.photoBase64 = reader.result;
+  reader.onload = async () => {
+    let finalSrc = reader.result;
+    try { finalSrc = await compressImage(reader.result, 1000, 0.65); }
+    catch (e) { /* nén lỗi (hiếm) -> vẫn dùng ảnh gốc, không chặn checkin */ }
+    state.photoBase64 = finalSrc;
     const img = document.getElementById('photo-preview');
-    img.src = reader.result; img.style.display = 'block';
+    img.src = finalSrc; img.style.display = 'block';
     checkSubmitReady();
   };
   reader.readAsDataURL(file);
@@ -793,21 +832,52 @@ function checkSubmitReady() {
   document.getElementById('submit-checkin-btn').disabled = !(state.gps && state.photoBase64);
 }
 
+function setCheckinProgress(pct, visible) {
+  const wrap = document.getElementById('checkin-progress-wrap');
+  wrap.style.display = visible ? 'flex' : 'none';
+  document.getElementById('checkin-progress-fill').style.width = pct + '%';
+  document.getElementById('checkin-progress-label').innerText = pct + '%';
+}
+
+// api() thường dùng fetch() (không lộ % tiến trình upload); dùng XHR riêng ở đây
+// để có sự kiện upload.onprogress cho thanh progress bar.
+function apiWithProgress(action, data, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API_URL);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round(e.loaded / e.total * 100));
+    };
+    xhr.onload = () => {
+      let json;
+      try { json = JSON.parse(xhr.responseText); }
+      catch (e) { reject(new Error('Phản hồi không hợp lệ từ máy chủ.')); return; }
+      if (!json.ok) { reject(new Error(json.error || 'Lỗi không xác định')); return; }
+      if (onProgress) onProgress(100);
+      resolve(json.data);
+    };
+    xhr.onerror = () => reject(new Error('Lỗi kết nối mạng.'));
+    xhr.send(JSON.stringify({ action, data }));
+  });
+}
+
 let isSubmittingCheckin = false;
 async function submitCheckinNow() {
   if (isSubmittingCheckin) return; // chặn double-tap ngay từ phía client, không chờ tới backend
   isSubmittingCheckin = true;
   const btn = document.getElementById('submit-checkin-btn');
   btn.disabled = true; btn.innerHTML = '<span class="loader"></span>Đang gửi...';
+  setCheckinProgress(0, true);
   try {
-    const result = await api('submitCheckin', {
+    const result = await apiWithProgress('submitCheckin', {
       username: state.user.username,
       full_name: state.user.full_name,
       checkpoint_id: state.selectedCheckpoint.checkpoint_id,
       lat: state.gps.lat, long: state.gps.long,
       photo_base64: state.photoBase64,
       checkin_id: state.checkinId
-    });
+    }, pct => setCheckinProgress(pct, true));
     renderStampResult(result);
     showScreen('screen-sitetour-result');
   } catch (e) {
@@ -815,6 +885,7 @@ async function submitCheckinNow() {
     btn.disabled = false; btn.innerHTML = 'Ghi nhận checkin';
   } finally {
     isSubmittingCheckin = false;
+    setCheckinProgress(0, false);
   }
 }
 
@@ -834,7 +905,7 @@ function renderStampResult(result) {
 async function goSitetourHistory() {
   showScreen('screen-sitetour-history');
   const wrap = document.getElementById('st-history-list');
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const rows = await api('listCheckins', { username: state.user.username, role: state.user.role });
     rows.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -899,7 +970,7 @@ async function renderMeetingTab() {
       </div>`;
     return;
   }
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     if (state.meetingTab === 'approval') {
       const rows = await api('listMeetingsForApproval', { username: state.user.username });
@@ -1107,7 +1178,7 @@ let currentMeetingDetail = null;
 async function openMeetingDetail(id) {
   showScreen('screen-meeting-detail');
   const body = document.getElementById('meeting-detail-body');
-  body.innerHTML = '<div class="empty">Đang tải...</div>';
+  body.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const m = await api('getMeetingById', { username: state.user.username, meeting_id: id });
     currentMeetingDetail = m;
@@ -1191,7 +1262,7 @@ let editingAccountUsername = null;
 async function renderAdminAccounts(editUsername) {
   editingAccountUsername = editUsername || null;
   const wrap = document.getElementById('admin-tab-content');
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const accounts = await api('adminListAccounts');
     adminAccountsCache = accounts;
@@ -1328,7 +1399,7 @@ let editingRegionCode = null;
 async function renderAdminRegions(editCode) {
   editingRegionCode = editCode || null;
   const wrap = document.getElementById('admin-tab-content');
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const regions = await api('adminListRegions');
     state.regionsCache = regions;
@@ -1383,7 +1454,7 @@ let editingBranchCode = null;
 async function renderAdminBranchesTab(editCode) {
   editingBranchCode = editCode || null;
   const wrap = document.getElementById('admin-tab-content');
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const [branches, regions] = await Promise.all([api('adminListBranches'), api('adminListRegions')]);
     const editing = editingBranchCode ? branches.find(b => b.branch_code === editingBranchCode) : null;
@@ -1451,7 +1522,7 @@ let editingCheckpointId = null;
 async function renderAdminCheckpoints(editId) {
   editingCheckpointId = editId || null;
   const wrap = document.getElementById('admin-tab-content');
-  wrap.innerHTML = '<div class="empty">Đang tải...</div>';
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const cps = await api('adminListCheckpoints');
     const editing = editingCheckpointId ? cps.find(c => c.checkpoint_id === editingCheckpointId) : null;
