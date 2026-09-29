@@ -192,17 +192,28 @@ ACTIONS.submitCheckin = async (pool, data) => {
   return { valid, distance_m: dist, radius_m: Number(cp.radius_m) };
 };
 
+ACTIONS.getCheckinPhoto = async (pool, data) => {
+  const { rows } = await pool.query('SELECT photo_url FROM checkins WHERE checkin_id=$1', [data.checkin_id]);
+  if (!rows[0]) throw new Error('Không tìm thấy checkin.');
+  return { photo_url: rows[0].photo_url || '' };
+};
+
+// Cột photo_url chứa cả ảnh base64 (vài MB/checkin) -> danh sách CHỈ trả về cờ
+// has_photo, không kéo dữ liệu ảnh; ảnh thật chỉ tải riêng lúc bấm xem
+// (xem ACTIONS.getCheckinPhoto) để tránh listCheckins nặng và chậm.
+const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, timestamp, (photo_url <> '') AS has_photo`;
+
 ACTIONS.listCheckins = async (pool, data) => {
   if (data.role === 'Admin') {
-    const { rows } = await pool.query('SELECT * FROM checkins ORDER BY timestamp DESC');
+    const { rows } = await pool.query(`SELECT ${CHECKIN_LIST_COLUMNS} FROM checkins ORDER BY timestamp DESC`);
     return rows;
   }
   if (data.role === 'SM' || data.role === 'SSM') {
     const subtree = await orgSubtreeUsernames(pool, data.username);
-    const { rows } = await pool.query('SELECT * FROM checkins ORDER BY timestamp DESC');
+    const { rows } = await pool.query(`SELECT ${CHECKIN_LIST_COLUMNS} FROM checkins ORDER BY timestamp DESC`);
     return rows.filter(r => subtree.has(r.username));
   }
-  const { rows } = await pool.query('SELECT * FROM checkins WHERE username=$1 ORDER BY timestamp DESC', [data.username]);
+  const { rows } = await pool.query(`SELECT ${CHECKIN_LIST_COLUMNS} FROM checkins WHERE username=$1 ORDER BY timestamp DESC`, [data.username]);
   return rows;
 };
 
