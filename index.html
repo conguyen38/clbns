@@ -214,6 +214,21 @@
   .row .l .s{font-size:12px;color:var(--slate);margin-top:2px;}
   .row .r{text-align:right;font-size:12px;color:var(--slate);}
 
+  /* Data table — real columns on tablet/desktop for list screens that are
+     stacked "title/subtitle + badge" cards on mobile (e.g. Sitetour history).
+     Card markup is default; .dtable swaps in from 768px up. */
+  .dtable-wrap{overflow-x:auto;}
+  .dtable{display:none;width:100%;border-collapse:collapse;}
+  @media (min-width:768px){
+    .history-cards{display:none;}
+    .dtable{display:table;}
+    .dtable thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1.5px solid var(--line);white-space:nowrap;}
+    .dtable tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2);vertical-align:middle;white-space:nowrap;}
+    .dtable tbody tr:last-child td{border-bottom:none;}
+    .dtable tbody tr:hover td{background:#F7F8F8;}
+    .dtable td.num{text-align:right;}
+  }
+
   /* Checkpoint pick list */
   .pick{display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid var(--line);border-radius:11px;margin-bottom:10px;cursor:pointer;background:#fff;}
   .pick.selected{border-color:var(--ink);background:#F3F6FB;}
@@ -752,11 +767,27 @@ async function goSitetourHistory() {
     const rows = await api('listCheckins', { username: state.user.username, role: state.user.role });
     rows.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
     if (!rows.length) { wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có checkin nào.</div>'; return; }
-    wrap.innerHTML = '<div class="card">' + rows.map(r => `
+    const cardsHtml = '<div class="card history-cards">' + rows.map(r => `
       <div class="row">
         <div class="l"><div class="t">${r.checkpoint_name}</div><div class="s">${r.sa_name || r.sa_username} · ${fmtDate(r.timestamp)}</div></div>
         <div class="r"><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span><div style="margin-top:4px;">${r.distance_m}m</div></div>
       </div>`).join('') + '</div>';
+    const tableHtml = `
+      <div class="card dtable-wrap" style="padding:0;">
+        <table class="dtable">
+          <thead><tr><th>Điểm checkin</th><th>Người checkin</th><th>Thời gian</th><th>Khoảng cách</th><th>Trạng thái</th></tr></thead>
+          <tbody>` + rows.map(r => `
+            <tr>
+              <td>${r.checkpoint_name}</td>
+              <td>${r.sa_name || r.sa_username}</td>
+              <td class="mono">${fmtDate(r.timestamp)}</td>
+              <td class="num mono">${r.distance_m}m</td>
+              <td><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span></td>
+            </tr>`).join('') + `
+          </tbody>
+        </table>
+      </div>`;
+    wrap.innerHTML = cardsHtml + tableHtml;
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
@@ -1079,17 +1110,25 @@ function switchAdminTab(tab) {
   if (tab === 'checkpoints') renderAdminCheckpoints();
 }
 
-async function renderAdminAccounts() {
+// Phân cấp cố định: SSM > SM > SA. SM chỉ report cho SSM (không report cho SM khác).
+// SA chỉ report cho đúng 1 SM.
+let adminAccountsCache = [];
+let editingAccountUsername = null;
+
+async function renderAdminAccounts(editUsername) {
+  editingAccountUsername = editUsername || null;
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="empty">Đang tải...</div>';
   try {
     const accounts = await api('adminListAccounts');
+    adminAccountsCache = accounts;
+    const editing = editingAccountUsername ? accounts.find(a => a.username === editingAccountUsername) : null;
     const formHtml = `
       <div class="card">
-        <div class="eyebrow">Tạo tài khoản mới</div>
-        <label style="margin-top:0;">Username</label><input id="ac-username" placeholder="vd: sa.nguyenvana">
-        <label>Mật khẩu</label><input id="ac-password" type="text" placeholder="Mật khẩu ban đầu">
-        <label>Họ tên</label><input id="ac-fullname" placeholder="Nguyễn Văn A">
+        <div class="eyebrow">${editing ? 'Sửa tài khoản @' + editing.username : 'Tạo tài khoản mới'}</div>
+        <label style="margin-top:0;">Username</label><input id="ac-username" placeholder="vd: sa.nguyenvana" value="${editing ? editing.username : ''}" ${editing ? 'disabled' : ''}>
+        <label>${editing ? 'Mật khẩu mới (để trống nếu không đổi)' : 'Mật khẩu'}</label><input id="ac-password" type="text" placeholder="${editing ? 'Để trống nếu giữ nguyên' : 'Mật khẩu ban đầu'}">
+        <label>Họ tên</label><input id="ac-fullname" placeholder="Nguyễn Văn A" value="${editing ? editing.full_name : ''}">
         <label>Vai trò</label>
         <select id="ac-role" onchange="toggleAccountFields()">
           <option value="SA">SA — Sales Agent</option>
@@ -1104,10 +1143,13 @@ async function renderAdminAccounts() {
         </div>
         <div id="ac-region-field" style="display:none;">
           <label id="ac-region-label">Vùng phụ trách (mã vùng, phân cách dấu phẩy)</label>
-          <input id="ac-regions" placeholder="vd: V10,V16">
+          <input id="ac-regions" placeholder="vd: V10,V16" value="${editing ? (editing.region_codes || '') : ''}">
           <div class="hint" id="ac-region-hint"></div>
         </div>
-        <button class="btn btn-primary" style="margin-top:16px;" onclick="createAccount(event)">Tạo tài khoản</button>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveAccount(event)">${editing ? 'Cập nhật tài khoản' : 'Tạo tài khoản'}</button>
+          ${editing ? '<button class="btn btn-outline" onclick="renderAdminAccounts()">Hủy</button>' : ''}
+        </div>
         <div id="ac-banner"></div>
       </div>`;
     const listHtml = '<div class="card">' + accounts.map(a => `
@@ -1115,21 +1157,26 @@ async function renderAdminAccounts() {
         <div class="l"><div class="t">${a.full_name} <span class="mono" style="color:var(--slate);font-size:11px;">@${a.username}</span></div>
           <div class="s">${roleLabel(a.role)}${a.manager_username ? ' · QL bởi ' + a.manager_username : ''}${a.region_codes ? ' · Vùng ' + a.region_codes : ''}</div></div>
         <div class="r">
-          <span class="badge ${String(a.active).toUpperCase()==='TRUE' ? 'approved':'rejectedsm'}">${String(a.active).toUpperCase()==='TRUE'?'Active':'Khóa'}</span><br>
-          <button class="btn btn-ghost" style="padding:6px 0;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
+          <span class="badge ${String(a.active).toUpperCase()==='TRUE' ? 'approved':'rejectedsm'}">${String(a.active).toUpperCase()==='TRUE'?'Active':'Khóa'}</span>
+          <div style="margin-top:6px;display:flex;gap:10px;justify-content:flex-end;">
+            <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminAccounts('${a.username}')">Sửa</button>
+            <button class="btn btn-ghost" style="padding:0;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
+            <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>
+          </div>
         </div>
       </div>`).join('') + '</div>';
     wrap.innerHTML = formHtml + listHtml;
-    adminAccountsCache = accounts;
+    if (editing) {
+      document.getElementById('ac-role').value = editing.role;
+    }
     toggleAccountFields();
+    if (editing) {
+      document.getElementById('ac-manager').value = editing.manager_username || '';
+    }
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
 }
-
-// Phân cấp cố định: SSM > SM > SA. SM chỉ report cho SSM (không report cho SM khác).
-// SA chỉ report cho đúng 1 SM.
-let adminAccountsCache = [];
 
 function toggleAccountFields() {
   const role = document.getElementById('ac-role').value;
@@ -1154,25 +1201,34 @@ function toggleAccountFields() {
     : '<option value="">—</option>';
 }
 
-async function createAccount(evt) {
+async function saveAccount(evt) {
   const btn = evt ? evt.currentTarget : null;
   if (btn && btn.disabled) return;
+  const editing = !!editingAccountUsername;
+  const username = document.getElementById('ac-username').value.trim();
+  const password = document.getElementById('ac-password').value;
   const payload = {
-    username: document.getElementById('ac-username').value.trim(),
-    password: document.getElementById('ac-password').value,
+    username,
     full_name: document.getElementById('ac-fullname').value.trim(),
     role: document.getElementById('ac-role').value,
     manager_username: document.getElementById('ac-manager') ? document.getElementById('ac-manager').value.trim() : '',
     region_codes: document.getElementById('ac-regions') ? document.getElementById('ac-regions').value.trim() : '',
   };
-  if (!payload.username || !payload.password || !payload.full_name) {
+  if (!editing) payload.password = password;
+  if (!username || (!editing && !password) || !payload.full_name) {
     banner('ac-banner','err','Vui lòng nhập đủ Username, Mật khẩu, Họ tên.'); return;
   }
   if (btn) btn.disabled = true;
   try {
-    await api('adminCreateAccount', payload);
-    banner('ac-banner','ok','Đã tạo tài khoản.');
-    setTimeout(renderAdminAccounts, 500);
+    if (editing) {
+      if (password) payload.password = password;
+      await api('adminUpdateAccount', payload);
+      banner('ac-banner','ok','Đã cập nhật tài khoản.');
+    } else {
+      await api('adminCreateAccount', payload);
+      banner('ac-banner','ok','Đã tạo tài khoản.');
+    }
+    setTimeout(() => renderAdminAccounts(), 500);
   } catch (e) {
     banner('ac-banner','err', e.message);
     if (btn) btn.disabled = false;
@@ -1184,67 +1240,110 @@ async function toggleAccountActive(username, active) {
   catch (e) { alert(e.message); }
 }
 
-async function renderAdminRegions() {
+async function deleteAccount(username) {
+  if (!confirm(`Xóa vĩnh viễn tài khoản @${username}? Lịch sử checkin/meeting liên quan sẽ vẫn giữ nguyên nhưng không còn tài khoản để đăng nhập.`)) return;
+  try { await api('adminDeleteAccount', { username }); renderAdminAccounts(); }
+  catch (e) { alert(e.message); }
+}
+
+let editingRegionCode = null;
+
+async function renderAdminRegions(editCode) {
+  editingRegionCode = editCode || null;
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="empty">Đang tải...</div>';
   try {
     const regions = await api('adminListRegions');
     state.regionsCache = regions;
+    const editing = editingRegionCode ? regions.find(r => r.region_code === editingRegionCode) : null;
     const formHtml = `
       <div class="card">
-        <div class="eyebrow">Tạo vùng mới</div>
-        <label style="margin-top:0;">Mã vùng</label><input id="rg-code" placeholder="vd: V10">
-        <label>Tên vùng</label><input id="rg-name" placeholder="vd: Vùng 10 - Quận 7">
-        <label>Username SM phụ trách</label><input id="rg-sm" placeholder="username SM">
-        <button class="btn btn-primary" style="margin-top:16px;" onclick="createRegion(event)">Tạo vùng</button>
+        <div class="eyebrow">${editing ? 'Sửa vùng ' + editing.region_code : 'Tạo vùng mới'}</div>
+        <label style="margin-top:0;">Mã vùng</label><input id="rg-code" placeholder="vd: V10" value="${editing ? editing.region_code : ''}" ${editing ? 'disabled' : ''}>
+        <label>Tên vùng</label><input id="rg-name" placeholder="vd: Vùng 10 - Quận 7" value="${editing ? editing.region_name : ''}">
+        <label>Username SM phụ trách</label><input id="rg-sm" placeholder="username SM" value="${editing ? (editing.sm_username || '') : ''}">
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveRegion(event)">${editing ? 'Cập nhật vùng' : 'Tạo vùng'}</button>
+          ${editing ? '<button class="btn btn-outline" onclick="renderAdminRegions()">Hủy</button>' : ''}
+        </div>
         <div id="rg-banner"></div>
       </div>`;
     const listHtml = '<div class="card">' + (regions.length ? regions.map(r => `
-      <div class="row"><div class="l"><div class="t">${r.region_name}</div><div class="s mono">${r.region_code} · SM: ${r.sm_username || '—'}</div></div></div>`).join('')
+      <div class="row">
+        <div class="l"><div class="t">${r.region_name}</div><div class="s mono">${r.region_code} · SM: ${r.sm_username || '—'}</div></div>
+        <div class="r"><div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminRegions('${r.region_code}')">Sửa</button>
+          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>
+        </div></div>
+      </div>`).join('')
       : '<div class="empty">Chưa có vùng nào.</div>') + '</div>';
     wrap.innerHTML = formHtml + listHtml;
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
 }
 
-async function createRegion(evt) {
+async function saveRegion(evt) {
   const btn = evt ? evt.currentTarget : null;
   if (btn && btn.disabled) return;
+  const editing = !!editingRegionCode;
   const payload = { region_code: document.getElementById('rg-code').value.trim(), region_name: document.getElementById('rg-name').value.trim(), sm_username: document.getElementById('rg-sm').value.trim() };
   if (!payload.region_code || !payload.region_name) { banner('rg-banner','err','Nhập Mã vùng và Tên vùng.'); return; }
   if (btn) btn.disabled = true;
-  try { await api('adminCreateRegion', payload); banner('rg-banner','ok','Đã tạo vùng.'); setTimeout(renderAdminRegions, 500); }
-  catch (e) { banner('rg-banner','err', e.message); if (btn) btn.disabled = false; }
+  try {
+    if (editing) { await api('adminUpdateRegion', payload); banner('rg-banner','ok','Đã cập nhật vùng.'); }
+    else { await api('adminCreateRegion', payload); banner('rg-banner','ok','Đã tạo vùng.'); }
+    setTimeout(() => renderAdminRegions(), 500);
+  } catch (e) { banner('rg-banner','err', e.message); if (btn) btn.disabled = false; }
 }
 
-async function renderAdminBranchesTab() {
+async function deleteRegion(region_code) {
+  if (!confirm(`Xóa vùng ${region_code}? Các chi nhánh đang gán vùng này sẽ không còn thuộc vùng nào hợp lệ.`)) return;
+  try { await api('adminDeleteRegion', { region_code }); renderAdminRegions(); }
+  catch (e) { alert(e.message); }
+}
+
+let editingBranchCode = null;
+
+async function renderAdminBranchesTab(editCode) {
+  editingBranchCode = editCode || null;
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="empty">Đang tải...</div>';
   try {
     const [branches, regions] = await Promise.all([api('adminListBranches'), api('adminListRegions')]);
+    const editing = editingBranchCode ? branches.find(b => b.branch_code === editingBranchCode) : null;
     const formHtml = `
       <div class="card">
-        <div class="eyebrow">Tạo chi nhánh mới</div>
-        <label style="margin-top:0;">Mã chi nhánh</label><input id="br-code" placeholder="vd: CN01 (để trống sẽ tự sinh)">
-        <label>Tên chi nhánh</label><input id="br-name" placeholder="vd: Chi nhánh Quận 7">
+        <div class="eyebrow">${editing ? 'Sửa chi nhánh ' + editing.branch_code : 'Tạo chi nhánh mới'}</div>
+        <label style="margin-top:0;">Mã chi nhánh</label><input id="br-code" placeholder="vd: CN01 (để trống sẽ tự sinh)" value="${editing ? editing.branch_code : ''}" ${editing ? 'disabled' : ''}>
+        <label>Tên chi nhánh</label><input id="br-name" placeholder="vd: Chi nhánh Quận 7" value="${editing ? editing.branch_name : ''}">
         <label>Thuộc Vùng</label>
-        <select id="br-region">${regions.map(r => `<option value="${r.region_code}">${r.region_code} — ${r.region_name}</option>`).join('') || '<option value="">(chưa có vùng)</option>'}</select>
-        <label>Latitude</label><input id="br-lat" type="number" step="0.000001" placeholder="vd: 10.8030065">
-        <label>Longitude</label><input id="br-long" type="number" step="0.000001" placeholder="vd: 106.7767749">
-        <label>Bán kính GPS checkin cho phép (m)</label><input id="br-radius" type="number" value="150">
+        <select id="br-region">${regions.map(r => `<option value="${r.region_code}" ${editing && editing.region_code===r.region_code ? 'selected':''}>${r.region_code} — ${r.region_name}</option>`).join('') || '<option value="">(chưa có vùng)</option>'}</select>
+        <label>Latitude</label><input id="br-lat" type="number" step="0.000001" placeholder="vd: 10.8030065" value="${editing ? editing.lat : ''}">
+        <label>Longitude</label><input id="br-long" type="number" step="0.000001" placeholder="vd: 106.7767749" value="${editing ? editing.long : ''}">
+        <label>Bán kính GPS checkin cho phép (m)</label><input id="br-radius" type="number" value="${editing ? editing.radius_m : 150}">
         <div class="hint">Tọa độ này dùng để xác thực vị trí GPS khi SA/SM tạo Meeting tại chi nhánh (không dùng cho Sitetour).</div>
-        <button class="btn btn-primary" style="margin-top:16px;" onclick="createBranch(event)">Tạo chi nhánh</button>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveBranch(event)">${editing ? 'Cập nhật chi nhánh' : 'Tạo chi nhánh'}</button>
+          ${editing ? '<button class="btn btn-outline" onclick="renderAdminBranchesTab()">Hủy</button>' : ''}
+        </div>
         <div id="br-banner"></div>
       </div>`;
     const listHtml = '<div class="card">' + (branches.length ? branches.map(b => `
-      <div class="row"><div class="l"><div class="t">${b.branch_name}</div><div class="s mono">${b.branch_code} · Vùng ${b.region_code} · ${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5)+' · r='+b.radius_m+'m' : 'chưa có tọa độ'}</div></div></div>`).join('')
+      <div class="row">
+        <div class="l"><div class="t">${b.branch_name}</div><div class="s mono">${b.branch_code} · Vùng ${b.region_code} · ${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5)+' · r='+b.radius_m+'m' : 'chưa có tọa độ'}</div></div>
+        <div class="r"><div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminBranchesTab('${b.branch_code}')">Sửa</button>
+          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>
+        </div></div>
+      </div>`).join('')
       : '<div class="empty">Chưa có chi nhánh nào.</div>') + '</div>';
     wrap.innerHTML = formHtml + listHtml;
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
 }
 
-async function createBranch(evt) {
+async function saveBranch(evt) {
   const btn = evt ? evt.currentTarget : null;
   if (btn && btn.disabled) return;
+  const editing = !!editingBranchCode;
   const payload = {
     branch_code: document.getElementById('br-code').value.trim(),
     branch_name: document.getElementById('br-name').value.trim(),
@@ -1256,37 +1355,60 @@ async function createBranch(evt) {
   if (!payload.branch_name || !payload.region_code) { banner('br-banner','err','Nhập Tên chi nhánh và chọn Vùng.'); return; }
   if (!payload.lat || !payload.long) { banner('br-banner','err','Nhập Latitude và Longitude để phục vụ GPS checkin khi tạo Meeting.'); return; }
   if (btn) btn.disabled = true;
-  try { await api('adminCreateBranch', payload); banner('br-banner','ok','Đã tạo chi nhánh.'); setTimeout(renderAdminBranchesTab, 500); }
-  catch (e) { banner('br-banner','err', e.message); if (btn) btn.disabled = false; }
+  try {
+    if (editing) { await api('adminUpdateBranch', payload); banner('br-banner','ok','Đã cập nhật chi nhánh.'); }
+    else { await api('adminCreateBranch', payload); banner('br-banner','ok','Đã tạo chi nhánh.'); }
+    setTimeout(() => renderAdminBranchesTab(), 500);
+  } catch (e) { banner('br-banner','err', e.message); if (btn) btn.disabled = false; }
 }
 
-async function renderAdminCheckpoints() {
+async function deleteBranch(branch_code) {
+  if (!confirm(`Xóa chi nhánh ${branch_code}? Các meeting đã gán chi nhánh này vẫn giữ dữ liệu cũ nhưng sẽ không còn chọn được chi nhánh này khi tạo mới.`)) return;
+  try { await api('adminDeleteBranch', { branch_code }); renderAdminBranchesTab(); }
+  catch (e) { alert(e.message); }
+}
+
+let editingCheckpointId = null;
+
+async function renderAdminCheckpoints(editId) {
+  editingCheckpointId = editId || null;
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="empty">Đang tải...</div>';
   try {
     const cps = await api('adminListCheckpoints');
+    const editing = editingCheckpointId ? cps.find(c => c.checkpoint_id === editingCheckpointId) : null;
     const formHtml = `
       <div class="card">
-        <div class="eyebrow">Tạo điểm checkin mới</div>
+        <div class="eyebrow">${editing ? 'Sửa điểm checkin' : 'Tạo điểm checkin mới'}</div>
         <div class="hint" style="margin-bottom:10px;">Điểm checkin áp dụng chung cho toàn bộ sales, không chia theo vùng.</div>
-        <label style="margin-top:0;">Tên điểm</label><input id="cp-name" placeholder="vd: Sales Gallery Masterise">
-        <label>Latitude</label><input id="cp-lat" type="number" step="0.000001" placeholder="vd: 10.8030065">
-        <label>Longitude</label><input id="cp-long" type="number" step="0.000001" placeholder="vd: 106.7767749">
-        <label>Bán kính cho phép (m)</label><input id="cp-radius" type="number" value="100">
+        <label style="margin-top:0;">Tên điểm</label><input id="cp-name" placeholder="vd: Sales Gallery Masterise" value="${editing ? editing.checkpoint_name : ''}">
+        <label>Latitude</label><input id="cp-lat" type="number" step="0.000001" placeholder="vd: 10.8030065" value="${editing ? editing.lat : ''}">
+        <label>Longitude</label><input id="cp-long" type="number" step="0.000001" placeholder="vd: 106.7767749" value="${editing ? editing.long : ''}">
+        <label>Bán kính cho phép (m)</label><input id="cp-radius" type="number" value="${editing ? editing.radius_m : 100}">
         <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
-        <button class="btn btn-primary" style="margin-top:16px;" onclick="createCheckpoint(event)">Tạo điểm checkin</button>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveCheckpoint(event)">${editing ? 'Cập nhật điểm checkin' : 'Tạo điểm checkin'}</button>
+          ${editing ? '<button class="btn btn-outline" onclick="renderAdminCheckpoints()">Hủy</button>' : ''}
+        </div>
         <div id="cp-banner"></div>
       </div>`;
     const listHtml = '<div class="card">' + (cps.length ? cps.map(c => `
-      <div class="row"><div class="l"><div class="t">${c.checkpoint_name}</div><div class="s mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)} · r=${c.radius_m}m</div></div></div>`).join('')
+      <div class="row">
+        <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)} · r=${c.radius_m}m</div></div>
+        <div class="r"><div style="display:flex;gap:10px;">
+          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
+          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>
+        </div></div>
+      </div>`).join('')
       : '<div class="empty">Chưa có điểm checkin nào.</div>') + '</div>';
     wrap.innerHTML = formHtml + listHtml;
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
 }
 
-async function createCheckpoint(evt) {
+async function saveCheckpoint(evt) {
   const btn = evt ? evt.currentTarget : null;
   if (btn && btn.disabled) return;
+  const editing = editingCheckpointId;
   const payload = {
     checkpoint_name: document.getElementById('cp-name').value.trim(),
     lat: document.getElementById('cp-lat').value,
@@ -1295,8 +1417,17 @@ async function createCheckpoint(evt) {
   };
   if (!payload.checkpoint_name || !payload.lat || !payload.long) { banner('cp-banner','err','Nhập đủ Tên điểm, Latitude, Longitude.'); return; }
   if (btn) btn.disabled = true;
-  try { await api('adminCreateCheckpoint', payload); banner('cp-banner','ok','Đã tạo điểm checkin.'); setTimeout(renderAdminCheckpoints, 500); }
-  catch (e) { banner('cp-banner','err', e.message); if (btn) btn.disabled = false; }
+  try {
+    if (editing) { await api('adminUpdateCheckpoint', { checkpoint_id: editing, ...payload }); banner('cp-banner','ok','Đã cập nhật điểm checkin.'); }
+    else { await api('adminCreateCheckpoint', payload); banner('cp-banner','ok','Đã tạo điểm checkin.'); }
+    setTimeout(() => renderAdminCheckpoints(), 500);
+  } catch (e) { banner('cp-banner','err', e.message); if (btn) btn.disabled = false; }
+}
+
+async function deleteCheckpoint(checkpoint_id) {
+  if (!confirm('Xóa điểm checkin này? Lịch sử checkin cũ vẫn giữ nguyên nhưng sẽ không còn chọn được điểm này khi checkin mới.')) return;
+  try { await api('adminDeleteCheckpoint', { checkpoint_id }); renderAdminCheckpoints(); }
+  catch (e) { alert(e.message); }
 }
 </script>
 </body>

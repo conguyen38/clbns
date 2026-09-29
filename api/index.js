@@ -56,11 +56,17 @@ ACTIONS.adminSetAccountActive = async (pool, data) => {
 };
 
 ACTIONS.adminUpdateAccount = async (pool, data) => {
-  const fields = ['full_name', 'role', 'manager_username', 'region_codes'].filter(f => data[f] !== undefined);
+  const fields = ['full_name', 'role', 'manager_username', 'region_codes', 'password'].filter(f => data[f] !== undefined && data[f] !== '');
   if (!fields.length) return { ok: true };
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
   const values = fields.map(f => data[f]);
   const res = await pool.query(`UPDATE accounts SET ${setClause} WHERE username=$1`, [data.username, ...values]);
+  if (!res.rowCount) throw new Error('Không tìm thấy tài khoản.');
+  return { ok: true };
+};
+
+ACTIONS.adminDeleteAccount = async (pool, data) => {
+  const res = await pool.query('DELETE FROM accounts WHERE username=$1', [data.username]);
   if (!res.rowCount) throw new Error('Không tìm thấy tài khoản.');
   return { ok: true };
 };
@@ -77,6 +83,22 @@ ACTIONS.adminCreateRegion = async (pool, data) => {
   if (exists.rows.length) throw new Error('Mã vùng đã tồn tại.');
   await pool.query('INSERT INTO regions (region_code, region_name, sm_username) VALUES ($1,$2,$3)',
     [region_code, region_name, data.sm_username || '']);
+  return { ok: true };
+};
+
+ACTIONS.adminUpdateRegion = async (pool, data) => {
+  const fields = ['region_name', 'sm_username'].filter(f => data[f] !== undefined);
+  if (!fields.length) return { ok: true };
+  const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
+  const values = fields.map(f => data[f]);
+  const res = await pool.query(`UPDATE regions SET ${setClause} WHERE region_code=$1`, [data.region_code, ...values]);
+  if (!res.rowCount) throw new Error('Không tìm thấy vùng.');
+  return { ok: true };
+};
+
+ACTIONS.adminDeleteRegion = async (pool, data) => {
+  const res = await pool.query('DELETE FROM regions WHERE region_code=$1', [data.region_code]);
+  if (!res.rowCount) throw new Error('Không tìm thấy vùng.');
   return { ok: true };
 };
 
@@ -104,6 +126,12 @@ ACTIONS.adminUpdateBranch = async (pool, data) => {
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
   const values = fields.map(f => data[f]);
   const res = await pool.query(`UPDATE branches SET ${setClause} WHERE branch_code=$1`, [data.branch_code, ...values]);
+  if (!res.rowCount) throw new Error('Không tìm thấy chi nhánh.');
+  return { ok: true };
+};
+
+ACTIONS.adminDeleteBranch = async (pool, data) => {
+  const res = await pool.query('DELETE FROM branches WHERE branch_code=$1', [data.branch_code]);
   if (!res.rowCount) throw new Error('Không tìm thấy chi nhánh.');
   return { ok: true };
 };
