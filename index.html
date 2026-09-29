@@ -278,6 +278,7 @@
   .lightbox.open{display:flex;}
   .lightbox img{max-width:100%;max-height:100%;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,0.4);}
   .lightbox .lb-close{position:absolute;top:18px;right:20px;background:rgba(255,255,255,0.15);color:#fff;border:none;width:38px;height:38px;border-radius:50%;font-size:18px;cursor:pointer;}
+  .thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--line);display:block;}
   .thumb-none{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:0.55;}
   .thumb-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;font-size:17px;cursor:pointer;}
   .thumb-btn:hover{background:#fff;border-color:var(--ink);}
@@ -674,16 +675,19 @@ function openLightbox(url) {
   document.getElementById('lightbox').classList.add('open');
 }
 
-// Ảnh không nằm trong listCheckins (quá nặng) -> tải riêng đúng lúc bấm xem.
-async function openCheckinPhoto(checkinId, btn) {
-  if (btn) { btn.disabled = true; btn.innerText = '…'; }
+// Ảnh gốc chất lượng đầy đủ không nằm trong listCheckins (quá nặng) -> tải
+// riêng đúng lúc bấm xem lightbox. `el` có thể là ảnh thumbnail nhỏ hoặc nút
+// icon (khi chưa có thumbnail) -- chỉ nút mới có trạng thái "đang tải".
+async function openCheckinPhoto(checkinId, el) {
+  const isBtn = el && el.tagName === 'BUTTON';
+  if (isBtn) { el.disabled = true; el.innerText = '…'; }
   try {
     const { photo_url } = await api('getCheckinPhoto', { checkin_id: checkinId });
     openLightbox(photo_url);
   } catch (e) {
     alert('Không tải được ảnh: ' + e.message);
   } finally {
-    if (btn) { btn.disabled = false; btn.innerText = '🖼️'; }
+    if (isBtn) { el.disabled = false; el.innerText = '🖼️'; }
   }
 }
 function closeLightbox() {
@@ -831,7 +835,7 @@ function selectCheckpoint(id) {
 }
 
 function goCheckinCapture() {
-  state.gps = null; state.photoBase64 = null;
+  state.gps = null; state.photoBase64 = null; state.photoThumbBase64 = null;
   state.checkinId = genShortCode('CI'); // cố định cho lượt checkin này -> chống ghi trùng nếu bấm nhiều lần
   document.getElementById('gps-dot').classList.remove('on');
   document.getElementById('gps-coords').innerText = 'Chưa lấy vị trí';
@@ -899,6 +903,10 @@ function onPhotoSelected(evt) {
     try { finalSrc = await compressImage(reader.result, 1000, 0.65); }
     catch (e) { /* nén lỗi (hiếm) -> vẫn dùng ảnh gốc, không chặn checkin */ }
     state.photoBase64 = finalSrc;
+    // Thumbnail siêu nhỏ riêng để hiện trong danh sách Lịch sử — chỉ cần quick
+    // view nên nén rất mạnh (120px, quality thấp), tách khỏi ảnh đầy đủ ở trên.
+    try { state.photoThumbBase64 = await compressImage(reader.result, 120, 0.5); }
+    catch (e) { state.photoThumbBase64 = ''; }
     const img = document.getElementById('photo-preview');
     img.src = finalSrc; img.style.display = 'block';
     document.getElementById('photo-filename').innerText = `Đã chọn: ${file.name}`;
@@ -955,6 +963,7 @@ async function submitCheckinNow() {
       checkpoint_id: state.selectedCheckpoint.checkpoint_id,
       lat: state.gps.lat, long: state.gps.long,
       photo_base64: state.photoBase64,
+      photo_thumb_base64: state.photoThumbBase64,
       checkin_id: state.checkinId
     }, pct => setCheckinProgress(pct, true));
     renderStampResult(result);
@@ -1004,9 +1013,11 @@ function renderStHistory() {
   const wrap = document.getElementById('st-history-list');
   if (!stHistoryRows.length) { wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có checkin nào.</div>'; return; }
   const { pageRows, page, totalPages, total } = sliceForPage(stHistoryRows, stHistoryPage);
-  const thumb = r => r.has_photo
-    ? `<button class="thumb-btn" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}', this)">🖼️</button>`
-    : '<span class="thumb-none" title="Không có ảnh">🚫</span>';
+  const thumb = r => {
+    if (r.photo_thumb) return `<img class="thumb" src="${r.photo_thumb}" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}', this)">`;
+    if (r.has_photo) return `<button class="thumb-btn" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}', this)">🖼️</button>`;
+    return '<span class="thumb-none" title="Không có ảnh">🚫</span>';
+  };
   const cardsHtml = '<div class="card history-cards">' + pageRows.map(r => `
     <div class="row">
       <div class="l" style="display:flex;gap:12px;align-items:center;">

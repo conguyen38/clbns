@@ -174,7 +174,7 @@ ACTIONS.getCheckpointsForUser = async (pool) => {
 };
 
 ACTIONS.submitCheckin = async (pool, data) => {
-  const { username, full_name, checkpoint_id, lat, long, photo_base64, checkin_id } = data;
+  const { username, full_name, checkpoint_id, lat, long, photo_base64, photo_thumb_base64, checkin_id } = data;
   const { rows } = await pool.query('SELECT * FROM checkpoints WHERE checkpoint_id=$1', [checkpoint_id]);
   const cp = rows[0];
   if (!cp) throw new Error('Không tìm thấy điểm checkin.');
@@ -184,9 +184,9 @@ ACTIONS.submitCheckin = async (pool, data) => {
   const exists = await pool.query('SELECT 1 FROM checkins WHERE checkin_id=$1', [cid]);
   if (!exists.rows.length) {
     await pool.query(
-      `INSERT INTO checkins (checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, photo_url, timestamp)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, now())`,
-      [cid, username, full_name || '', checkpoint_id, cp.checkpoint_name, lat, long, dist, cp.radius_m, valid, photo_base64 || '']
+      `INSERT INTO checkins (checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, photo_url, photo_thumb, timestamp)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())`,
+      [cid, username, full_name || '', checkpoint_id, cp.checkpoint_name, lat, long, dist, cp.radius_m, valid, photo_base64 || '', photo_thumb_base64 || '']
     );
   }
   return { valid, distance_m: dist, radius_m: Number(cp.radius_m) };
@@ -201,7 +201,7 @@ ACTIONS.getCheckinPhoto = async (pool, data) => {
 // Cột photo_url chứa cả ảnh base64 (vài MB/checkin) -> danh sách CHỈ trả về cờ
 // has_photo, không kéo dữ liệu ảnh; ảnh thật chỉ tải riêng lúc bấm xem
 // (xem ACTIONS.getCheckinPhoto) để tránh listCheckins nặng và chậm.
-const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, timestamp, (photo_url <> '') AS has_photo`;
+const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, timestamp, photo_thumb, (photo_url <> '') AS has_photo`;
 
 ACTIONS.listCheckins = async (pool, data) => {
   if (data.role === 'Admin') {

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS checkins (
   radius_m          integer,
   valid             boolean NOT NULL DEFAULT false,
   photo_url         text NOT NULL DEFAULT '',
+  photo_thumb       text NOT NULL DEFAULT '',
   timestamp         timestamptz NOT NULL DEFAULT now()
 );
 
