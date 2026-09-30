@@ -58,11 +58,13 @@
     /* Topbar becomes an inline page header (title + back only) — sidebar already
        carries brand/user chrome, so keep that out of the per-screen header. */
     #shell.authed #screen-home .topbar{display:none;}
-    #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;}
+    #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;justify-content:flex-start;}
     #shell.authed .topbar .brand .name{color:var(--ink);}
     #shell.authed .topbar .brand .sub{color:var(--slate);}
-    #shell.authed .topbar button.back{color:var(--ink);font-size:26px;}
+    #shell.authed .topbar button.back{display:none;}
     #shell.authed .topbar .userchip{display:none;}
+    #shell.authed .topbar-chip{background:#fff;border-color:var(--line);color:var(--ink);margin-left:auto;}
+    #shell.authed .topbar-chip:hover{background:var(--paper);}
 
     .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;align-items:stretch;}
     .home-grid .tap-card{margin-bottom:0;flex-direction:column;align-items:flex-start;text-align:left;padding:24px;}
@@ -114,6 +116,8 @@
   .topbar .brand .name{font-family:'Roboto',sans-serif;font-weight:900;font-size:19px;letter-spacing:0.03em;}
   .topbar .brand .sub{font-size:10px;color:var(--slate-light);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
   .topbar button.back{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 8px 0 0;}
+  .topbar-chip{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12.5px;font-weight:600;border-radius:100px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+  .topbar-chip:hover{background:rgba(255,255,255,0.2);}
   .topbar .userchip{font-size:12px;color:var(--slate-light);text-align:right;}
   .topbar .userchip b{color:#fff;display:block;font-size:13px;}
 
@@ -306,6 +310,7 @@
   .admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;}
   .admin-toolbar input{flex:1;min-width:160px;margin:0;}
   .admin-toolbar .btn{width:auto;white-space:nowrap;padding:12px 18px;margin:0;}
+  .admin-toolbar select, .admin-toolbar .cs-wrap{width:auto;min-width:150px;flex-shrink:0;}
 
   .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -403,7 +408,7 @@
     <div class="topbar">
       <button class="back" onclick="goHome()">‹</button>
       <div class="brand"><span class="name">SITETOUR</span><span class="sub">Chọn điểm checkin</span></div>
-      <button class="back" onclick="goSitetourHistory()" style="font-size:13px;">Lịch sử</button>
+      <button class="topbar-chip" onclick="goSitetourHistory()">🕐 Lịch sử</button>
     </div>
     <div style="padding-top:18px;">
       <div id="st-list-banner"></div>
@@ -1497,8 +1502,13 @@ function goAdmin() { showScreen('screen-admin'); switchAdminTab('accounts'); }
 function switchAdminTab(tab) {
   state.adminTab = tab;
   document.querySelectorAll('#admin-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-  // Luôn vào lại ở view list (không giữ form dở từ lần trước rời tab).
+  // Luôn vào lại ở view list, bỏ filter/search cũ (không giữ form/bộ lọc dở từ lần trước rời tab).
   acViewMode = 'list'; rgViewMode = 'list'; brViewMode = 'list'; cpViewMode = 'list';
+  acSearch = ''; acRoleFilter = ''; acRegionFilter = '';
+  rgSearch = '';
+  brSearch = ''; brRegionFilter = '';
+  cpSearch = '';
+  acPage = rgPage = brPage = cpPage = 1;
   if (tab === 'accounts') renderAdminAccounts();
   if (tab === 'regions') renderAdminRegions();
   if (tab === 'branches') renderAdminBranchesTab();
@@ -1512,8 +1522,13 @@ let editingAccountUsername = null;
 let acPage = 1;
 let acViewMode = 'list';
 let acSearch = '';
+let acRoleFilter = '';
+let acRegionFilter = '';
+let acCacheRegions = [];
 function acSetPage(p) { acPage = p; rerenderPreservingFocus(renderAccountsView); }
 function acSetSearch(v) { acSearch = v; acPage = 1; rerenderPreservingFocus(renderAccountsView); }
+function acSetRoleFilter(v) { acRoleFilter = v; acPage = 1; renderAccountsView(); }
+function acSetRegionFilter(v) { acRegionFilter = v; acPage = 1; renderAccountsView(); }
 function acShowCreate() { editingAccountUsername = null; acViewMode = 'form'; renderAccountsView(); }
 function acShowList() { editingAccountUsername = null; acViewMode = 'list'; renderAccountsView(); }
 
@@ -1522,7 +1537,7 @@ async function renderAdminAccounts(editUsername) {
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    adminAccountsCache = await api('adminListAccounts');
+    [adminAccountsCache, acCacheRegions] = await Promise.all([api('adminListAccounts'), api('adminListRegions')]);
     renderAccountsView();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
@@ -1575,28 +1590,56 @@ function renderAccountsView() {
     return;
   }
 
-  const filtered = filterRows(accounts, acSearch, ['full_name', 'username', 'role', 'manager_username']);
+  let filtered = filterRows(accounts, acSearch, ['full_name', 'username', 'role', 'manager_username']);
+  if (acRoleFilter) filtered = filtered.filter(a => a.role === acRoleFilter);
+  if (acRegionFilter) filtered = filtered.filter(a => String(a.region_codes || '').split(',').map(s=>s.trim()).includes(acRegionFilter));
   const acPageInfo = sliceForPage(filtered, acPage);
   const toolbarHtml = `
     <div class="card admin-toolbar">
       <input id="ac-search-input" placeholder="🔍 Tìm theo tên, username, vai trò..." value="${acSearch}" oninput="acSetSearch(this.value)">
+      <select id="ac-role-filter" onchange="acSetRoleFilter(this.value)">
+        <option value="">Tất cả vai trò</option>
+        <option value="SA">SA — Sales Agent</option>
+        <option value="SM">SM — Sales Manager</option>
+        <option value="SSM">SSM — Senior Sales Manager</option>
+        <option value="Admin">Admin</option>
+      </select>
+      <select id="ac-region-filter" onchange="acSetRegionFilter(this.value)">
+        <option value="">Tất cả vùng</option>
+        ${acCacheRegions.map(r => `<option value="${r.region_code}">${r.region_code} — ${r.region_name}</option>`).join('')}
+      </select>
       <button class="btn btn-primary" onclick="acShowCreate()">+ Tạo tài khoản</button>
     </div>`;
-  const listHtml = '<div class="card">' + (filtered.length ? acPageInfo.pageRows.map(a => `
+  const acActions = a => `
+    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminAccounts('${a.username}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
+    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>`;
+  const listHtml = filtered.length ? (
+    '<div class="card history-cards">' + acPageInfo.pageRows.map(a => `
       <div class="row">
         <div class="l"><div class="t">${a.full_name} <span class="mono" style="color:var(--slate);font-size:11px;">@${a.username}</span></div>
           <div class="s">${roleLabel(a.role)}${a.manager_username ? ' · QL bởi ' + a.manager_username : ''}${a.region_codes ? ' · Vùng ' + a.region_codes : ''}</div></div>
         <div class="r">
           <span class="badge ${String(a.active).toUpperCase()==='TRUE' ? 'approved':'rejectedsm'}">${String(a.active).toUpperCase()==='TRUE'?'Active':'Khóa'}</span>
-          <div style="margin-top:6px;display:flex;gap:10px;justify-content:flex-end;">
-            <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminAccounts('${a.username}')">Sửa</button>
-            <button class="btn btn-ghost" style="padding:0;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
-            <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>
-          </div>
+          <div style="margin-top:6px;display:flex;gap:10px;justify-content:flex-end;">${acActions(a)}</div>
         </div>
-      </div>`).join('') + renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage')
-      : `<div class="empty">${acSearch ? 'Không tìm thấy tài khoản nào khớp.' : 'Chưa có tài khoản nào.'}</div>`) + '</div>';
+      </div>`).join('') + renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage') + '</div>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Họ tên</th><th>Username</th><th>Vai trò</th><th>Quản lý bởi</th><th>Vùng</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody>' +
+      acPageInfo.pageRows.map(a => `<tr>
+        <td>${a.full_name}</td>
+        <td class="mono">@${a.username}</td>
+        <td>${roleLabel(a.role)}</td>
+        <td>${a.manager_username || '—'}</td>
+        <td>${a.region_codes || '—'}</td>
+        <td><span class="badge ${String(a.active).toUpperCase()==='TRUE' ? 'approved':'rejectedsm'}">${String(a.active).toUpperCase()==='TRUE'?'Active':'Khóa'}</span></td>
+        <td><div style="display:flex;gap:10px;">${acActions(a)}</div></td>
+      </tr>`).join('') + `</tbody></table>${renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage')}</div>`
+  ) : `<div class="card"><div class="empty">${acSearch ? 'Không tìm thấy tài khoản nào khớp.' : 'Chưa có tài khoản nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
+  document.getElementById('ac-role-filter').value = acRoleFilter;
+  document.getElementById('ac-region-filter').value = acRegionFilter;
+  buildCustomSelect(document.getElementById('ac-role-filter'));
+  buildCustomSelect(document.getElementById('ac-region-filter'));
 }
 
 function toggleAccountFields() {
@@ -1719,15 +1762,23 @@ function renderRegionsView() {
       <input id="rg-search-input" placeholder="🔍 Tìm theo tên, mã vùng, SM..." value="${rgSearch}" oninput="rgSetSearch(this.value)">
       <button class="btn btn-primary" onclick="rgShowCreate()">+ Tạo vùng</button>
     </div>`;
-  const listHtml = '<div class="card">' + (filtered.length ? rgPageInfo.pageRows.map(r => `
+  const rgActions = r => `
+    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminRegions('${r.region_code}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>`;
+  const listHtml = filtered.length ? (
+    '<div class="card history-cards">' + rgPageInfo.pageRows.map(r => `
       <div class="row">
         <div class="l"><div class="t">${r.region_name}</div><div class="s mono">${r.region_code} · SM: ${r.sm_username || '—'}</div></div>
-        <div class="r"><div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminRegions('${r.region_code}')">Sửa</button>
-          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>
-        </div></div>
-      </div>`).join('') + renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage')
-      : `<div class="empty">${rgSearch ? 'Không tìm thấy vùng nào khớp.' : 'Chưa có vùng nào.'}</div>`) + '</div>';
+        <div class="r"><div style="display:flex;gap:10px;">${rgActions(r)}</div></div>
+      </div>`).join('') + renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage') + '</div>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên vùng</th><th>Mã vùng</th><th>SM phụ trách</th><th>Thao tác</th></tr></thead><tbody>' +
+      rgPageInfo.pageRows.map(r => `<tr>
+        <td>${r.region_name}</td>
+        <td class="mono">${r.region_code}</td>
+        <td>${r.sm_username || '—'}</td>
+        <td><div style="display:flex;gap:10px;">${rgActions(r)}</div></td>
+      </tr>`).join('') + `</tbody></table>${renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage')}</div>`
+  ) : `<div class="card"><div class="empty">${rgSearch ? 'Không tìm thấy vùng nào khớp.' : 'Chưa có vùng nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
 }
 
@@ -1757,10 +1808,12 @@ let editingBranchCode = null;
 let brPage = 1;
 let brViewMode = 'list';
 let brSearch = '';
+let brRegionFilter = '';
 let brCacheBranches = [];
 let brCacheRegions = [];
 function brSetPage(p) { brPage = p; rerenderPreservingFocus(renderBranchesView); }
 function brSetSearch(v) { brSearch = v; brPage = 1; rerenderPreservingFocus(renderBranchesView); }
+function brSetRegionFilter(v) { brRegionFilter = v; brPage = 1; renderBranchesView(); }
 function brShowCreate() { editingBranchCode = null; brViewMode = 'form'; renderBranchesView(); }
 function brShowList() { editingBranchCode = null; brViewMode = 'list'; renderBranchesView(); }
 
@@ -1801,23 +1854,40 @@ function renderBranchesView() {
     return;
   }
 
-  const filtered = filterRows(branches, brSearch, ['branch_name', 'branch_code', 'region_code']);
+  let filtered = filterRows(branches, brSearch, ['branch_name', 'branch_code', 'region_code']);
+  if (brRegionFilter) filtered = filtered.filter(b => b.region_code === brRegionFilter);
   const brPageInfo = sliceForPage(filtered, brPage);
   const toolbarHtml = `
     <div class="card admin-toolbar">
       <input id="br-search-input" placeholder="🔍 Tìm theo tên, mã chi nhánh, vùng..." value="${brSearch}" oninput="brSetSearch(this.value)">
+      <select id="br-region-filter" onchange="brSetRegionFilter(this.value)">
+        <option value="">Tất cả vùng</option>
+        ${regions.map(r => `<option value="${r.region_code}">${r.region_code} — ${r.region_name}</option>`).join('')}
+      </select>
       <button class="btn btn-primary" onclick="brShowCreate()">+ Tạo chi nhánh</button>
     </div>`;
-  const listHtml = '<div class="card">' + (filtered.length ? brPageInfo.pageRows.map(b => `
+  const brActions = b => `
+    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminBranchesTab('${b.branch_code}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>`;
+  const listHtml = filtered.length ? (
+    '<div class="card history-cards">' + brPageInfo.pageRows.map(b => `
       <div class="row">
         <div class="l"><div class="t">${b.branch_name}</div><div class="s mono">${b.branch_code} · Vùng ${b.region_code} · ${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5)+' · r='+b.radius_m+'m' : 'chưa có tọa độ'}</div></div>
-        <div class="r"><div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminBranchesTab('${b.branch_code}')">Sửa</button>
-          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>
-        </div></div>
-      </div>`).join('') + renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage')
-      : `<div class="empty">${brSearch ? 'Không tìm thấy chi nhánh nào khớp.' : 'Chưa có chi nhánh nào.'}</div>`) + '</div>';
+        <div class="r"><div style="display:flex;gap:10px;">${brActions(b)}</div></div>
+      </div>`).join('') + renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage') + '</div>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên chi nhánh</th><th>Mã</th><th>Vùng</th><th>Tọa độ</th><th>Bán kính</th><th>Thao tác</th></tr></thead><tbody>' +
+      brPageInfo.pageRows.map(b => `<tr>
+        <td>${b.branch_name}</td>
+        <td class="mono">${b.branch_code}</td>
+        <td>${b.region_code}</td>
+        <td class="mono">${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5) : 'chưa có'}</td>
+        <td class="num mono">${b.radius_m}m</td>
+        <td><div style="display:flex;gap:10px;">${brActions(b)}</div></td>
+      </tr>`).join('') + `</tbody></table>${renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage')}</div>`
+  ) : `<div class="card"><div class="empty">${brSearch || brRegionFilter ? 'Không tìm thấy chi nhánh nào khớp.' : 'Chưa có chi nhánh nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
+  document.getElementById('br-region-filter').value = brRegionFilter;
+  buildCustomSelect(document.getElementById('br-region-filter'));
 }
 
 async function saveBranch(evt) {
@@ -1902,15 +1972,24 @@ function renderCheckpointsView() {
       <input id="cp-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." value="${cpSearch}" oninput="cpSetSearch(this.value)">
       <button class="btn btn-primary" onclick="cpShowCreate()">+ Tạo điểm checkin</button>
     </div>`;
-  const listHtml = '<div class="card">' + (filtered.length ? cpPageInfo.pageRows.map(c => `
+  const cpActions = c => `
+    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>`;
+  const listHtml = filtered.length ? (
+    '<div class="card history-cards">' + cpPageInfo.pageRows.map(c => `
       <div class="row">
         <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s">${c.address || 'Chưa có địa chỉ'}</div><div class="s mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)} · r=${c.radius_m}m</div></div>
-        <div class="r"><div style="display:flex;gap:10px;">
-          <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
-          <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>
-        </div></div>
-      </div>`).join('') + renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')
-      : `<div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div>`) + '</div>';
+        <div class="r"><div style="display:flex;gap:10px;">${cpActions(c)}</div></div>
+      </div>`).join('') + renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage') + '</div>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên điểm</th><th>Địa chỉ</th><th>Tọa độ</th><th>Bán kính</th><th>Thao tác</th></tr></thead><tbody>' +
+      cpPageInfo.pageRows.map(c => `<tr>
+        <td>${c.checkpoint_name}</td>
+        <td>${c.address || 'Chưa có địa chỉ'}</td>
+        <td class="mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)}</td>
+        <td class="num mono">${c.radius_m}m</td>
+        <td><div style="display:flex;gap:10px;">${cpActions(c)}</div></td>
+      </tr>`).join('') + `</tbody></table>${renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')}</div>`
+  ) : `<div class="card"><div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
 }
 
