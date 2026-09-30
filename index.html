@@ -302,6 +302,11 @@
   .pager button:disabled{opacity:0.4;cursor:not-allowed;}
   .pager-info{font-size:12.5px;color:var(--slate);white-space:nowrap;}
 
+  /* Admin list toolbar — search box + "Tạo mới" */
+  .admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;}
+  .admin-toolbar input{flex:1;min-width:160px;margin:0;}
+  .admin-toolbar .btn{width:auto;white-space:nowrap;padding:12px 18px;margin:0;}
+
   .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
 
@@ -727,6 +732,23 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLight
    calling back `changeFnName(nextPage)` — the render function that owns
    that list's page-state variable and re-renders on click. */
 const PAGE_SIZE = 20;
+function filterRows(rows, query, fields) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return rows;
+  return rows.filter(r => fields.some(f => String(r[f] || '').toLowerCase().includes(q)));
+}
+// Re-render a list view from already-fetched data (search/page/cancel) without
+// refetching, and without destroying focus on a search input mid-keystroke.
+function rerenderPreservingFocus(renderFn) {
+  const active = document.activeElement;
+  const id = active && active.id;
+  const cursor = (id && typeof active.selectionStart === 'number') ? active.selectionStart : null;
+  renderFn();
+  if (id) {
+    const el = document.getElementById(id);
+    if (el) { el.focus(); if (cursor != null && el.setSelectionRange) el.setSelectionRange(cursor, cursor); }
+  }
+}
 function sliceForPage(rows, page) {
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const p = Math.min(Math.max(1, page), totalPages);
@@ -1475,6 +1497,8 @@ function goAdmin() { showScreen('screen-admin'); switchAdminTab('accounts'); }
 function switchAdminTab(tab) {
   state.adminTab = tab;
   document.querySelectorAll('#admin-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  // Luôn vào lại ở view list (không giữ form dở từ lần trước rời tab).
+  acViewMode = 'list'; rgViewMode = 'list'; brViewMode = 'list'; cpViewMode = 'list';
   if (tab === 'accounts') renderAdminAccounts();
   if (tab === 'regions') renderAdminRegions();
   if (tab === 'branches') renderAdminBranchesTab();
@@ -1486,17 +1510,32 @@ function switchAdminTab(tab) {
 let adminAccountsCache = [];
 let editingAccountUsername = null;
 let acPage = 1;
-function acSetPage(p) { acPage = p; renderAdminAccounts(editingAccountUsername); }
+let acViewMode = 'list';
+let acSearch = '';
+function acSetPage(p) { acPage = p; rerenderPreservingFocus(renderAccountsView); }
+function acSetSearch(v) { acSearch = v; acPage = 1; rerenderPreservingFocus(renderAccountsView); }
+function acShowCreate() { editingAccountUsername = null; acViewMode = 'form'; renderAccountsView(); }
+function acShowList() { editingAccountUsername = null; acViewMode = 'list'; renderAccountsView(); }
 
 async function renderAdminAccounts(editUsername) {
-  editingAccountUsername = editUsername || null;
+  if (editUsername) { editingAccountUsername = editUsername; acViewMode = 'form'; }
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    const accounts = await api('adminListAccounts');
-    adminAccountsCache = accounts;
+    adminAccountsCache = await api('adminListAccounts');
+    renderAccountsView();
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+function renderAccountsView() {
+  const wrap = document.getElementById('admin-tab-content');
+  const accounts = adminAccountsCache;
+
+  if (acViewMode === 'form') {
     const editing = editingAccountUsername ? accounts.find(a => a.username === editingAccountUsername) : null;
-    const formHtml = `
+    wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa tài khoản @' + editing.username : 'Tạo tài khoản mới'}</div>
         <label style="margin-top:0;">Username</label><input id="ac-username" placeholder="vd: sa.nguyenvana" value="${editing ? editing.username : ''}" ${editing ? 'disabled' : ''}>
@@ -1521,12 +1560,29 @@ async function renderAdminAccounts(editUsername) {
         </div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveAccount(event)">${editing ? 'Cập nhật tài khoản' : 'Tạo tài khoản'}</button>
-          ${editing ? '<button class="btn btn-outline" onclick="renderAdminAccounts()">Hủy</button>' : ''}
+          <button class="btn btn-outline" onclick="acShowList()">Hủy</button>
         </div>
         <div id="ac-banner"></div>
       </div>`;
-    const acPageInfo = sliceForPage(accounts, acPage);
-    const listHtml = '<div class="card">' + acPageInfo.pageRows.map(a => `
+    if (editing) document.getElementById('ac-role').value = editing.role;
+    buildCustomSelect(document.getElementById('ac-role'));
+    toggleAccountFields();
+    if (editing) {
+      const mgrSel = document.getElementById('ac-manager');
+      mgrSel.value = editing.manager_username || '';
+      if (mgrSel._csRefresh) mgrSel._csRefresh();
+    }
+    return;
+  }
+
+  const filtered = filterRows(accounts, acSearch, ['full_name', 'username', 'role', 'manager_username']);
+  const acPageInfo = sliceForPage(filtered, acPage);
+  const toolbarHtml = `
+    <div class="card admin-toolbar">
+      <input id="ac-search-input" placeholder="🔍 Tìm theo tên, username, vai trò..." value="${acSearch}" oninput="acSetSearch(this.value)">
+      <button class="btn btn-primary" onclick="acShowCreate()">+ Tạo tài khoản</button>
+    </div>`;
+  const listHtml = '<div class="card">' + (filtered.length ? acPageInfo.pageRows.map(a => `
       <div class="row">
         <div class="l"><div class="t">${a.full_name} <span class="mono" style="color:var(--slate);font-size:11px;">@${a.username}</span></div>
           <div class="s">${roleLabel(a.role)}${a.manager_username ? ' · QL bởi ' + a.manager_username : ''}${a.region_codes ? ' · Vùng ' + a.region_codes : ''}</div></div>
@@ -1538,21 +1594,9 @@ async function renderAdminAccounts(editUsername) {
             <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>
           </div>
         </div>
-      </div>`).join('') + renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage') + '</div>';
-    wrap.innerHTML = formHtml + listHtml;
-    if (editing) {
-      document.getElementById('ac-role').value = editing.role;
-    }
-    buildCustomSelect(document.getElementById('ac-role'));
-    toggleAccountFields();
-    if (editing) {
-      const mgrSel = document.getElementById('ac-manager');
-      mgrSel.value = editing.manager_username || '';
-      if (mgrSel._csRefresh) mgrSel._csRefresh();
-    }
-  } catch (e) {
-    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
-  }
+      </div>`).join('') + renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage')
+      : `<div class="empty">${acSearch ? 'Không tìm thấy tài khoản nào khớp.' : 'Chưa có tài khoản nào.'}</div>`) + '</div>';
+  wrap.innerHTML = toolbarHtml + listHtml;
 }
 
 function toggleAccountFields() {
@@ -1606,6 +1650,8 @@ async function saveAccount(evt) {
       await api('adminCreateAccount', payload);
       banner('ac-banner','ok','Đã tạo tài khoản.');
     }
+    acViewMode = 'list';
+    editingAccountUsername = null;
     setTimeout(() => renderAdminAccounts(), 500);
   } catch (e) {
     banner('ac-banner','err', e.message);
@@ -1626,17 +1672,32 @@ async function deleteAccount(username) {
 
 let editingRegionCode = null;
 let rgPage = 1;
-function rgSetPage(p) { rgPage = p; renderAdminRegions(editingRegionCode); }
+let rgViewMode = 'list';
+let rgSearch = '';
+let rgCache = [];
+function rgSetPage(p) { rgPage = p; rerenderPreservingFocus(renderRegionsView); }
+function rgSetSearch(v) { rgSearch = v; rgPage = 1; rerenderPreservingFocus(renderRegionsView); }
+function rgShowCreate() { editingRegionCode = null; rgViewMode = 'form'; renderRegionsView(); }
+function rgShowList() { editingRegionCode = null; rgViewMode = 'list'; renderRegionsView(); }
 
 async function renderAdminRegions(editCode) {
-  editingRegionCode = editCode || null;
+  if (editCode) { editingRegionCode = editCode; rgViewMode = 'form'; }
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    const regions = await api('adminListRegions');
-    state.regionsCache = regions;
+    rgCache = await api('adminListRegions');
+    state.regionsCache = rgCache;
+    renderRegionsView();
+  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+}
+
+function renderRegionsView() {
+  const wrap = document.getElementById('admin-tab-content');
+  const regions = rgCache;
+
+  if (rgViewMode === 'form') {
     const editing = editingRegionCode ? regions.find(r => r.region_code === editingRegionCode) : null;
-    const formHtml = `
+    wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa vùng ' + editing.region_code : 'Tạo vùng mới'}</div>
         <label style="margin-top:0;">Mã vùng</label><input id="rg-code" placeholder="vd: V10" value="${editing ? editing.region_code : ''}" ${editing ? 'disabled' : ''}>
@@ -1644,12 +1705,21 @@ async function renderAdminRegions(editCode) {
         <label>Username SM phụ trách</label><input id="rg-sm" placeholder="username SM" value="${editing ? (editing.sm_username || '') : ''}">
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveRegion(event)">${editing ? 'Cập nhật vùng' : 'Tạo vùng'}</button>
-          ${editing ? '<button class="btn btn-outline" onclick="renderAdminRegions()">Hủy</button>' : ''}
+          <button class="btn btn-outline" onclick="rgShowList()">Hủy</button>
         </div>
         <div id="rg-banner"></div>
       </div>`;
-    const rgPageInfo = sliceForPage(regions, rgPage);
-    const listHtml = '<div class="card">' + (regions.length ? rgPageInfo.pageRows.map(r => `
+    return;
+  }
+
+  const filtered = filterRows(regions, rgSearch, ['region_name', 'region_code', 'sm_username']);
+  const rgPageInfo = sliceForPage(filtered, rgPage);
+  const toolbarHtml = `
+    <div class="card admin-toolbar">
+      <input id="rg-search-input" placeholder="🔍 Tìm theo tên, mã vùng, SM..." value="${rgSearch}" oninput="rgSetSearch(this.value)">
+      <button class="btn btn-primary" onclick="rgShowCreate()">+ Tạo vùng</button>
+    </div>`;
+  const listHtml = '<div class="card">' + (filtered.length ? rgPageInfo.pageRows.map(r => `
       <div class="row">
         <div class="l"><div class="t">${r.region_name}</div><div class="s mono">${r.region_code} · SM: ${r.sm_username || '—'}</div></div>
         <div class="r"><div style="display:flex;gap:10px;">
@@ -1657,9 +1727,8 @@ async function renderAdminRegions(editCode) {
           <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>
         </div></div>
       </div>`).join('') + renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage')
-      : '<div class="empty">Chưa có vùng nào.</div>') + '</div>';
-    wrap.innerHTML = formHtml + listHtml;
-  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+      : `<div class="empty">${rgSearch ? 'Không tìm thấy vùng nào khớp.' : 'Chưa có vùng nào.'}</div>`) + '</div>';
+  wrap.innerHTML = toolbarHtml + listHtml;
 }
 
 async function saveRegion(evt) {
@@ -1672,6 +1741,8 @@ async function saveRegion(evt) {
   try {
     if (editing) { await api('adminUpdateRegion', payload); banner('rg-banner','ok','Đã cập nhật vùng.'); }
     else { await api('adminCreateRegion', payload); banner('rg-banner','ok','Đã tạo vùng.'); }
+    rgViewMode = 'list';
+    editingRegionCode = null;
     setTimeout(() => renderAdminRegions(), 500);
   } catch (e) { banner('rg-banner','err', e.message); if (btn) btn.disabled = false; }
 }
@@ -1684,16 +1755,32 @@ async function deleteRegion(region_code) {
 
 let editingBranchCode = null;
 let brPage = 1;
-function brSetPage(p) { brPage = p; renderAdminBranchesTab(editingBranchCode); }
+let brViewMode = 'list';
+let brSearch = '';
+let brCacheBranches = [];
+let brCacheRegions = [];
+function brSetPage(p) { brPage = p; rerenderPreservingFocus(renderBranchesView); }
+function brSetSearch(v) { brSearch = v; brPage = 1; rerenderPreservingFocus(renderBranchesView); }
+function brShowCreate() { editingBranchCode = null; brViewMode = 'form'; renderBranchesView(); }
+function brShowList() { editingBranchCode = null; brViewMode = 'list'; renderBranchesView(); }
 
 async function renderAdminBranchesTab(editCode) {
-  editingBranchCode = editCode || null;
+  if (editCode) { editingBranchCode = editCode; brViewMode = 'form'; }
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    const [branches, regions] = await Promise.all([api('adminListBranches'), api('adminListRegions')]);
+    [brCacheBranches, brCacheRegions] = await Promise.all([api('adminListBranches'), api('adminListRegions')]);
+    renderBranchesView();
+  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+}
+
+function renderBranchesView() {
+  const wrap = document.getElementById('admin-tab-content');
+  const branches = brCacheBranches, regions = brCacheRegions;
+
+  if (brViewMode === 'form') {
     const editing = editingBranchCode ? branches.find(b => b.branch_code === editingBranchCode) : null;
-    const formHtml = `
+    wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa chi nhánh ' + editing.branch_code : 'Tạo chi nhánh mới'}</div>
         <label style="margin-top:0;">Mã chi nhánh</label><input id="br-code" placeholder="vd: CN01 (để trống sẽ tự sinh)" value="${editing ? editing.branch_code : ''}" ${editing ? 'disabled' : ''}>
@@ -1706,12 +1793,22 @@ async function renderAdminBranchesTab(editCode) {
         <div class="hint">Tọa độ này dùng để xác thực vị trí GPS khi SA/SM tạo Meeting tại chi nhánh (không dùng cho Sitetour).</div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveBranch(event)">${editing ? 'Cập nhật chi nhánh' : 'Tạo chi nhánh'}</button>
-          ${editing ? '<button class="btn btn-outline" onclick="renderAdminBranchesTab()">Hủy</button>' : ''}
+          <button class="btn btn-outline" onclick="brShowList()">Hủy</button>
         </div>
         <div id="br-banner"></div>
       </div>`;
-    const brPageInfo = sliceForPage(branches, brPage);
-    const listHtml = '<div class="card">' + (branches.length ? brPageInfo.pageRows.map(b => `
+    buildCustomSelect(document.getElementById('br-region'));
+    return;
+  }
+
+  const filtered = filterRows(branches, brSearch, ['branch_name', 'branch_code', 'region_code']);
+  const brPageInfo = sliceForPage(filtered, brPage);
+  const toolbarHtml = `
+    <div class="card admin-toolbar">
+      <input id="br-search-input" placeholder="🔍 Tìm theo tên, mã chi nhánh, vùng..." value="${brSearch}" oninput="brSetSearch(this.value)">
+      <button class="btn btn-primary" onclick="brShowCreate()">+ Tạo chi nhánh</button>
+    </div>`;
+  const listHtml = '<div class="card">' + (filtered.length ? brPageInfo.pageRows.map(b => `
       <div class="row">
         <div class="l"><div class="t">${b.branch_name}</div><div class="s mono">${b.branch_code} · Vùng ${b.region_code} · ${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5)+' · r='+b.radius_m+'m' : 'chưa có tọa độ'}</div></div>
         <div class="r"><div style="display:flex;gap:10px;">
@@ -1719,10 +1816,8 @@ async function renderAdminBranchesTab(editCode) {
           <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>
         </div></div>
       </div>`).join('') + renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage')
-      : '<div class="empty">Chưa có chi nhánh nào.</div>') + '</div>';
-    wrap.innerHTML = formHtml + listHtml;
-    buildCustomSelect(document.getElementById('br-region'));
-  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+      : `<div class="empty">${brSearch ? 'Không tìm thấy chi nhánh nào khớp.' : 'Chưa có chi nhánh nào.'}</div>`) + '</div>';
+  wrap.innerHTML = toolbarHtml + listHtml;
 }
 
 async function saveBranch(evt) {
@@ -1743,6 +1838,8 @@ async function saveBranch(evt) {
   try {
     if (editing) { await api('adminUpdateBranch', payload); banner('br-banner','ok','Đã cập nhật chi nhánh.'); }
     else { await api('adminCreateBranch', payload); banner('br-banner','ok','Đã tạo chi nhánh.'); }
+    brViewMode = 'list';
+    editingBranchCode = null;
     setTimeout(() => renderAdminBranchesTab(), 500);
   } catch (e) { banner('br-banner','err', e.message); if (btn) btn.disabled = false; }
 }
@@ -1755,16 +1852,31 @@ async function deleteBranch(branch_code) {
 
 let editingCheckpointId = null;
 let cpPage = 1;
-function cpSetPage(p) { cpPage = p; renderAdminCheckpoints(editingCheckpointId); }
+let cpViewMode = 'list';
+let cpSearch = '';
+let cpCache = [];
+function cpSetPage(p) { cpPage = p; rerenderPreservingFocus(renderCheckpointsView); }
+function cpSetSearch(v) { cpSearch = v; cpPage = 1; rerenderPreservingFocus(renderCheckpointsView); }
+function cpShowCreate() { editingCheckpointId = null; cpViewMode = 'form'; renderCheckpointsView(); }
+function cpShowList() { editingCheckpointId = null; cpViewMode = 'list'; renderCheckpointsView(); }
 
 async function renderAdminCheckpoints(editId) {
-  editingCheckpointId = editId || null;
+  if (editId) { editingCheckpointId = editId; cpViewMode = 'form'; }
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    const cps = await api('adminListCheckpoints');
+    cpCache = await api('adminListCheckpoints');
+    renderCheckpointsView();
+  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+}
+
+function renderCheckpointsView() {
+  const wrap = document.getElementById('admin-tab-content');
+  const cps = cpCache;
+
+  if (cpViewMode === 'form') {
     const editing = editingCheckpointId ? cps.find(c => c.checkpoint_id === editingCheckpointId) : null;
-    const formHtml = `
+    wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa điểm checkin' : 'Tạo điểm checkin mới'}</div>
         <div class="hint" style="margin-bottom:10px;">Điểm checkin áp dụng chung cho toàn bộ sales, không chia theo vùng.</div>
@@ -1776,12 +1888,21 @@ async function renderAdminCheckpoints(editId) {
         <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveCheckpoint(event)">${editing ? 'Cập nhật điểm checkin' : 'Tạo điểm checkin'}</button>
-          ${editing ? '<button class="btn btn-outline" onclick="renderAdminCheckpoints()">Hủy</button>' : ''}
+          <button class="btn btn-outline" onclick="cpShowList()">Hủy</button>
         </div>
         <div id="cp-banner"></div>
       </div>`;
-    const cpPageInfo = sliceForPage(cps, cpPage);
-    const listHtml = '<div class="card">' + (cps.length ? cpPageInfo.pageRows.map(c => `
+    return;
+  }
+
+  const filtered = filterRows(cps, cpSearch, ['checkpoint_name', 'address']);
+  const cpPageInfo = sliceForPage(filtered, cpPage);
+  const toolbarHtml = `
+    <div class="card admin-toolbar">
+      <input id="cp-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." value="${cpSearch}" oninput="cpSetSearch(this.value)">
+      <button class="btn btn-primary" onclick="cpShowCreate()">+ Tạo điểm checkin</button>
+    </div>`;
+  const listHtml = '<div class="card">' + (filtered.length ? cpPageInfo.pageRows.map(c => `
       <div class="row">
         <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s">${c.address || 'Chưa có địa chỉ'}</div><div class="s mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)} · r=${c.radius_m}m</div></div>
         <div class="r"><div style="display:flex;gap:10px;">
@@ -1789,9 +1910,8 @@ async function renderAdminCheckpoints(editId) {
           <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>
         </div></div>
       </div>`).join('') + renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')
-      : '<div class="empty">Chưa có điểm checkin nào.</div>') + '</div>';
-    wrap.innerHTML = formHtml + listHtml;
-  } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
+      : `<div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div>`) + '</div>';
+  wrap.innerHTML = toolbarHtml + listHtml;
 }
 
 async function saveCheckpoint(evt) {
@@ -1810,6 +1930,8 @@ async function saveCheckpoint(evt) {
   try {
     if (editing) { await api('adminUpdateCheckpoint', { checkpoint_id: editing, ...payload }); banner('cp-banner','ok','Đã cập nhật điểm checkin.'); }
     else { await api('adminCreateCheckpoint', payload); banner('cp-banner','ok','Đã tạo điểm checkin.'); }
+    cpViewMode = 'list';
+    editingCheckpointId = null;
     setTimeout(() => renderAdminCheckpoints(), 500);
   } catch (e) { banner('cp-banner','err', e.message); if (btn) btn.disabled = false; }
 }
