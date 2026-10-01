@@ -61,7 +61,7 @@
     #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;margin:0;justify-content:flex-start;}
     #shell.authed .topbar .brand .name{color:var(--ink);}
     #shell.authed .topbar .brand .sub{color:var(--slate);}
-    #shell.authed .topbar button.back{display:none;}
+    #shell.authed .topbar button.back{color:var(--ink);padding:0 10px 0 0;}
     #shell.authed .topbar .userchip{display:none;}
     #shell.authed .topbar-chip{background:#fff;border-color:var(--line);color:var(--ink);margin-left:auto;}
     #shell.authed .topbar-chip:hover{background:var(--paper);}
@@ -430,7 +430,7 @@
   <div class="screen" id="screen-sitetour-create">
     <div class="topbar">
       <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name">TẠO HOẠT ĐỘNG</span><span class="sub">Check in</span></div>
+      <div class="brand"><span class="name" id="sta-title">TẠO HOẠT ĐỘNG</span><span class="sub">Check in</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
@@ -459,7 +459,7 @@
           <div style="flex:1;"><input id="sta-checkout-end" type="datetime-local"></div>
         </div>
         <div class="btn-row" style="margin-top:16px;">
-          <button class="btn btn-primary" onclick="saveSitetourActivity(event)">Tạo hoạt động</button>
+          <button class="btn btn-primary" id="sta-submit-btn" onclick="saveSitetourActivity(event)">Tạo hoạt động</button>
           <button class="btn btn-outline" onclick="goSitetourList()">Hủy</button>
         </div>
         <div id="sta-banner"></div>
@@ -985,17 +985,23 @@ async function goSitetourList() {
   }
 }
 
-function goSitetourCreateActivity() {
-  document.getElementById('sta-name').value = '';
-  document.getElementById('sta-type').value = 'offline';
-  document.getElementById('sta-address').value = '';
-  document.getElementById('sta-lat').value = '';
-  document.getElementById('sta-long').value = '';
-  document.getElementById('sta-radius').value = 100;
-  document.getElementById('sta-checkin-start').value = '';
-  document.getElementById('sta-checkin-end').value = '';
-  document.getElementById('sta-checkout-start').value = '';
-  document.getElementById('sta-checkout-end').value = '';
+let editingSitetourActivityId = null;
+
+function goSitetourCreateActivity(editId) {
+  editingSitetourActivityId = editId || null;
+  const editing = editId ? state.checkpoints.find(c => c.checkpoint_id === editId) : null;
+  document.getElementById('sta-title').innerText = editing ? 'SỬA HOẠT ĐỘNG' : 'TẠO HOẠT ĐỘNG';
+  document.getElementById('sta-submit-btn').innerText = editing ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  document.getElementById('sta-name').value = editing ? editing.checkpoint_name : '';
+  document.getElementById('sta-type').value = editing ? editing.activity_type : 'offline';
+  document.getElementById('sta-address').value = editing ? (editing.address || '') : '';
+  document.getElementById('sta-lat').value = editing && editing.lat != null ? editing.lat : '';
+  document.getElementById('sta-long').value = editing && editing.long != null ? editing.long : '';
+  document.getElementById('sta-radius').value = editing ? editing.radius_m : 100;
+  document.getElementById('sta-checkin-start').value = editing ? fmtDatetimeLocal(editing.checkin_start) : '';
+  document.getElementById('sta-checkin-end').value = editing ? fmtDatetimeLocal(editing.checkin_end) : '';
+  document.getElementById('sta-checkout-start').value = editing ? fmtDatetimeLocal(editing.checkout_start) : '';
+  document.getElementById('sta-checkout-end').value = editing ? fmtDatetimeLocal(editing.checkout_end) : '';
   banner('sta-banner', '', '');
   showScreen('screen-sitetour-create');
   buildCustomSelect(document.getElementById('sta-type'));
@@ -1030,10 +1036,24 @@ async function saveSitetourActivity(evt) {
   if (!payload.checkout_start || !payload.checkout_end) { banner('sta-banner','err','Nhập đủ khung giờ Check out.'); return; }
   if (btn) btn.disabled = true;
   try {
-    await api('adminCreateCheckpoint', payload);
-    banner('sta-banner','ok','Đã tạo hoạt động.');
+    if (editingSitetourActivityId) {
+      await api('adminUpdateCheckpoint', { checkpoint_id: editingSitetourActivityId, ...payload });
+      banner('sta-banner','ok','Đã cập nhật hoạt động.');
+    } else {
+      await api('adminCreateCheckpoint', payload);
+      banner('sta-banner','ok','Đã tạo hoạt động.');
+    }
     setTimeout(() => goSitetourList(), 500);
   } catch (e) { banner('sta-banner','err', e.message); if (btn) btn.disabled = false; }
+}
+
+async function deleteSitetourActivity(id, evt) {
+  if (evt) evt.stopPropagation();
+  if (!confirm('Xóa hoạt động này? Lịch sử check in/out cũ vẫn giữ nguyên nhưng sẽ không còn chọn được hoạt động này nữa.')) return;
+  try {
+    await api('adminDeleteCheckpoint', { checkpoint_id: id });
+    goSitetourList();
+  } catch (e) { alert(e.message); }
 }
 
 function activityTypeBadge(cp) {
@@ -1051,9 +1071,14 @@ function renderCheckpointList() {
     wrap.innerHTML = '<div class="empty">Không tìm thấy hoạt động nào khớp.</div>';
     return;
   }
+  const isAdmin = state.user.role === 'Admin';
   wrap.innerHTML = filtered.map(cp => `
     <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
       <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div></div>
+      ${isAdmin ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="goSitetourCreateActivity('${cp.checkpoint_id}')">Sửa</button>
+        <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteSitetourActivity('${cp.checkpoint_id}', event)">Xóa</button>
+      </div>` : ''}
     </div>`).join('');
 }
 
