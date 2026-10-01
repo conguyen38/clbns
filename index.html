@@ -419,7 +419,6 @@
       <div id="st-list-banner"></div>
       <input id="st-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." style="margin-bottom:14px;" oninput="stCheckpointSetSearch(this.value)">
       <div id="st-checkpoint-list" class="pick-grid"></div>
-      <button class="btn btn-primary" style="margin-top:6px;" id="st-continue-btn" disabled onclick="goCheckinCapture()">Tiếp tục</button>
     </div>
   </div>
 
@@ -993,8 +992,7 @@ function renderCheckpointList() {
 
 function selectCheckpoint(id) {
   state.selectedCheckpoint = state.checkpoints.find(c => c.checkpoint_id === id);
-  document.getElementById('st-continue-btn').disabled = false;
-  renderCheckpointList();
+  goCheckinCapture();
 }
 
 function goCheckinCapture() {
