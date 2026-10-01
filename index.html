@@ -248,6 +248,7 @@
     .dtable tbody tr:last-child td{border-bottom:none;}
     .dtable tbody tr:hover td{background:#F7F8F8;}
     .dtable td.num{text-align:right;}
+    .dtable td.mono, .dtable td.nowrap{white-space:nowrap;}
   }
 
   /* Checkpoint pick list */
@@ -773,7 +774,9 @@ function sliceForPage(rows, page) {
   return { pageRows: rows.slice(start, start + PAGE_SIZE), page: p, totalPages, total: rows.length };
 }
 function renderPager(page, totalPages, total, changeFnName) {
-  if (totalPages <= 1) return '';
+  if (totalPages <= 1) {
+    return `<div class="pager"><span class="pager-info">${total} mục</span></div>`;
+  }
   return `<div class="pager">
     <button ${page<=1?'disabled':''} onclick="${changeFnName}(${page-1})">‹ Trước</button>
     <span class="pager-info">Trang ${page}/${totalPages} · ${total} mục</span>
@@ -1684,7 +1687,7 @@ function renderAccountsView() {
         <td>${a.manager_username || '—'}</td>
         <td>${a.region_codes || '—'}</td>
         <td><span class="badge ${String(a.active).toUpperCase()==='TRUE' ? 'approved':'rejectedsm'}">${String(a.active).toUpperCase()==='TRUE'?'Active':'Khóa'}</span></td>
-        <td><div style="display:flex;gap:10px;">${acActions(a)}</div></td>
+        <td class="nowrap"><div style="display:flex;gap:10px;">${acActions(a)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${acSearch ? 'Không tìm thấy tài khoản nào khớp.' : 'Chưa có tài khoản nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
@@ -1839,7 +1842,7 @@ function renderRegionsView() {
         <td>${r.region_name}</td>
         <td class="mono">${r.region_code}</td>
         <td>${r.sm_username || '—'}</td>
-        <td><div style="display:flex;gap:10px;">${rgActions(r)}</div></td>
+        <td class="nowrap"><div style="display:flex;gap:10px;">${rgActions(r)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${rgSearch ? 'Không tìm thấy vùng nào khớp.' : 'Chưa có vùng nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
@@ -1945,7 +1948,7 @@ function renderBranchesView() {
         <td>${b.region_code}</td>
         <td class="mono">${b.lat && b.long ? Number(b.lat).toFixed(5)+', '+Number(b.long).toFixed(5) : 'chưa có'}</td>
         <td class="num mono">${b.radius_m}m</td>
-        <td><div style="display:flex;gap:10px;">${brActions(b)}</div></td>
+        <td class="nowrap"><div style="display:flex;gap:10px;">${brActions(b)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${brSearch || brRegionFilter ? 'Không tìm thấy chi nhánh nào khớp.' : 'Chưa có chi nhánh nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
@@ -2041,16 +2044,15 @@ function renderCheckpointsView() {
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + cpPageInfo.pageRows.map(c => `
       <div class="row">
-        <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s">${c.address || 'Chưa có địa chỉ'}</div><div class="s mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)} · r=${c.radius_m}m</div></div>
+        <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s">${c.address || 'Chưa có địa chỉ'}</div><div class="s mono">Bán kính ${c.radius_m}m</div></div>
         <div class="r"><div style="display:flex;gap:10px;">${cpActions(c)}</div></div>
       </div>`).join('') + renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage') + '</div>' +
-    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên điểm</th><th>Địa chỉ</th><th>Tọa độ</th><th>Bán kính</th><th>Thao tác</th></tr></thead><tbody>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên điểm</th><th>Địa chỉ</th><th>Bán kính</th><th>Thao tác</th></tr></thead><tbody>' +
       cpPageInfo.pageRows.map(c => `<tr>
         <td>${c.checkpoint_name}</td>
         <td>${c.address || 'Chưa có địa chỉ'}</td>
-        <td class="mono">${Number(c.lat).toFixed(5)}, ${Number(c.long).toFixed(5)}</td>
         <td class="num mono">${c.radius_m}m</td>
-        <td><div style="display:flex;gap:10px;">${cpActions(c)}</div></td>
+        <td class="nowrap"><div style="display:flex;gap:10px;">${cpActions(c)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + listHtml;
