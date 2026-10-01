@@ -23,26 +23,36 @@ CREATE TABLE IF NOT EXISTS branches (
   radius_m      integer NOT NULL DEFAULT 150
 );
 
+-- "checkpoint" ở đây = Hoạt động (online hoặc offline) cho tính năng Check in.
+-- Online: không cần lat/long/radius_m/address. Offline: bắt buộc đủ 4 trường đó.
 CREATE TABLE IF NOT EXISTS checkpoints (
   checkpoint_id     text PRIMARY KEY,
   checkpoint_name   text NOT NULL,
   address           text NOT NULL DEFAULT '',
-  lat               double precision NOT NULL,
-  long              double precision NOT NULL,
-  radius_m          integer NOT NULL DEFAULT 100
+  activity_type     text NOT NULL DEFAULT 'offline', -- 'online' | 'offline'
+  lat               double precision,
+  long              double precision,
+  radius_m          integer NOT NULL DEFAULT 100,
+  checkin_start     timestamptz,
+  checkin_end       timestamptz,
+  checkout_start    timestamptz,
+  checkout_end      timestamptz
 );
 
+-- Mỗi dòng là 1 lần check in HOẶC check out (action_type) của 1 user với 1 hoạt động.
 CREATE TABLE IF NOT EXISTS checkins (
   checkin_id        text PRIMARY KEY,
   username          text NOT NULL,
   sa_name           text NOT NULL DEFAULT '',
   checkpoint_id     text NOT NULL,
   checkpoint_name   text NOT NULL DEFAULT '',
+  action_type       text NOT NULL DEFAULT 'checkin', -- 'checkin' | 'checkout'
   lat               double precision,
   long              double precision,
   distance_m        integer,
   radius_m          integer,
-  valid             boolean NOT NULL DEFAULT false,
+  time_valid        boolean NOT NULL DEFAULT true,  -- có nằm trong khung giờ cho phép không
+  valid             boolean NOT NULL DEFAULT false, -- hợp lệ tổng thể (time_valid AND gps_valid nếu offline)
   photo_url         text NOT NULL DEFAULT '',
   photo_thumb       text NOT NULL DEFAULT '',
   timestamp         timestamptz NOT NULL DEFAULT now()

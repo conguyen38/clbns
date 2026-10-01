@@ -150,29 +150,37 @@ ACTIONS.adminListCheckpoints = async (pool) => {
 };
 
 ACTIONS.adminCreateCheckpoint = async (pool, data) => {
-  const { checkpoint_name, lat, long, radius_m } = data;
-  if (!checkpoint_name || !lat || !long) throw new Error('Thiếu thông tin điểm checkin.');
+  const { checkpoint_name, activity_type } = data;
+  if (!checkpoint_name) throw new Error('Thiếu tên hoạt động.');
+  const isOffline = activity_type !== 'online';
+  if (isOffline && (!data.lat || !data.long)) throw new Error('Hoạt động offline cần Latitude/Longitude.');
+  if (!data.checkin_start || !data.checkin_end) throw new Error('Thiếu khung giờ Check in.');
+  if (!data.checkout_start || !data.checkout_end) throw new Error('Thiếu khung giờ Check out.');
   const id = require('crypto').randomUUID();
   await pool.query(
-    'INSERT INTO checkpoints (checkpoint_id, checkpoint_name, address, lat, long, radius_m) VALUES ($1,$2,$3,$4,$5,$6)',
-    [id, checkpoint_name, data.address || '', Number(lat), Number(long), Number(radius_m) || 100]
+    `INSERT INTO checkpoints (checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m, checkin_start, checkin_end, checkout_start, checkout_end)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [id, checkpoint_name, isOffline ? (data.address || '') : '', isOffline ? 'offline' : 'online',
+     isOffline ? Number(data.lat) : null, isOffline ? Number(data.long) : null, isOffline ? (Number(data.radius_m) || 100) : 0,
+     data.checkin_start, data.checkin_end, data.checkout_start, data.checkout_end]
   );
   return { ok: true };
 };
 
 ACTIONS.adminUpdateCheckpoint = async (pool, data) => {
-  const fields = ['checkpoint_name', 'address', 'lat', 'long', 'radius_m'].filter(f => data[f] !== undefined);
+  const fields = ['checkpoint_name', 'address', 'activity_type', 'lat', 'long', 'radius_m', 'checkin_start', 'checkin_end', 'checkout_start', 'checkout_end']
+    .filter(f => data[f] !== undefined);
   if (!fields.length) return { ok: true };
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
   const values = fields.map(f => data[f]);
   const res = await pool.query(`UPDATE checkpoints SET ${setClause} WHERE checkpoint_id=$1`, [data.checkpoint_id, ...values]);
-  if (!res.rowCount) throw new Error('Không tìm thấy điểm checkin.');
+  if (!res.rowCount) throw new Error('Không tìm thấy hoạt động.');
   return { ok: true };
 };
 
 ACTIONS.adminDeleteCheckpoint = async (pool, data) => {
   const res = await pool.query('DELETE FROM checkpoints WHERE checkpoint_id=$1', [data.checkpoint_id]);
-  if (!res.rowCount) throw new Error('Không tìm thấy điểm checkin.');
+  if (!res.rowCount) throw new Error('Không tìm thấy hoạt động.');
   return { ok: true };
 };
 
@@ -181,23 +189,51 @@ ACTIONS.getCheckpointsForUser = async (pool) => {
   return rows;
 };
 
-ACTIONS.submitCheckin = async (pool, data) => {
-  const { username, full_name, checkpoint_id, lat, long, photo_base64, photo_thumb_base64, checkin_id } = data;
+// Xác định hành động tiếp theo của user với 1 hoạt động: nếu lần gần nhất
+// HÔM NAY là checkin (chưa có checkout theo sau) -> tiếp theo là checkout;
+// ngược lại (chưa làm gì hôm nay, hoặc lần gần nhất đã là checkout) -> checkin.
+ACTIONS.getActivityCheckStatus = async (pool, data) => {
+  const { rows } = await pool.query(
+    `SELECT action_type, timestamp FROM checkins
+     WHERE username=$1 AND checkpoint_id=$2 AND timestamp::date = CURRENT_DATE
+     ORDER BY timestamp DESC LIMIT 1`,
+    [data.username, data.activity_id]
+  );
+  const last = rows[0];
+  return { next_action: (last && last.action_type === 'checkin') ? 'checkout' : 'checkin' };
+};
+
+ACTIONS.submitActivityLog = async (pool, data) => {
+  const { username, full_name, checkpoint_id, action_type, lat, long, photo_base64, photo_thumb_base64, checkin_id } = data;
   const { rows } = await pool.query('SELECT * FROM checkpoints WHERE checkpoint_id=$1', [checkpoint_id]);
   const cp = rows[0];
-  if (!cp) throw new Error('Không tìm thấy điểm checkin.');
-  const dist = Math.round(haversine(lat, long, Number(cp.lat), Number(cp.long)));
-  const valid = dist <= Number(cp.radius_m);
+  if (!cp) throw new Error('Không tìm thấy hoạt động.');
+  const isOffline = cp.activity_type === 'offline';
+  const windowStart = action_type === 'checkout' ? cp.checkout_start : cp.checkin_start;
+  const windowEnd = action_type === 'checkout' ? cp.checkout_end : cp.checkin_end;
+  const now = new Date();
+  const timeValid = (!windowStart || now >= new Date(windowStart)) && (!windowEnd || now <= new Date(windowEnd));
+
+  let dist = null, gpsValid = true;
+  if (isOffline) {
+    if (lat == null || long == null) throw new Error('Hoạt động offline cần vị trí GPS.');
+    dist = Math.round(haversine(lat, long, Number(cp.lat), Number(cp.long)));
+    gpsValid = dist <= Number(cp.radius_m);
+  }
+  const valid = timeValid && gpsValid;
+
   const cid = checkin_id || require('crypto').randomUUID();
   const exists = await pool.query('SELECT 1 FROM checkins WHERE checkin_id=$1', [cid]);
   if (!exists.rows.length) {
     await pool.query(
-      `INSERT INTO checkins (checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, photo_url, photo_thumb, timestamp)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, now())`,
-      [cid, username, full_name || '', checkpoint_id, cp.checkpoint_name, lat, long, dist, cp.radius_m, valid, photo_base64 || '', photo_thumb_base64 || '']
+      `INSERT INTO checkins (checkin_id, username, sa_name, checkpoint_id, checkpoint_name, action_type, lat, long, distance_m, radius_m, time_valid, valid, photo_url, photo_thumb, timestamp)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, now())`,
+      [cid, username, full_name || '', checkpoint_id, cp.checkpoint_name, action_type || 'checkin',
+       isOffline ? lat : null, isOffline ? long : null, dist, isOffline ? cp.radius_m : null,
+       timeValid, valid, photo_base64 || '', photo_thumb_base64 || '']
     );
   }
-  return { valid, distance_m: dist, radius_m: Number(cp.radius_m) };
+  return { valid, time_valid: timeValid, gps_valid: isOffline ? gpsValid : null, distance_m: dist, radius_m: isOffline ? Number(cp.radius_m) : null };
 };
 
 ACTIONS.getCheckinPhoto = async (pool, data) => {
@@ -209,7 +245,7 @@ ACTIONS.getCheckinPhoto = async (pool, data) => {
 // Cột photo_url chứa cả ảnh base64 (vài MB/checkin) -> danh sách CHỈ trả về cờ
 // has_photo, không kéo dữ liệu ảnh; ảnh thật chỉ tải riêng lúc bấm xem
 // (xem ACTIONS.getCheckinPhoto) để tránh listCheckins nặng và chậm.
-const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, lat, long, distance_m, radius_m, valid, timestamp, photo_thumb, (photo_url <> '') AS has_photo`;
+const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, action_type, lat, long, distance_m, radius_m, time_valid, valid, timestamp, photo_thumb, (photo_url <> '') AS has_photo`;
 
 ACTIONS.listCheckins = async (pool, data) => {
   if (data.role === 'Admin') {

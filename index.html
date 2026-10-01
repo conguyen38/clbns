@@ -336,7 +336,7 @@
   <div class="sb-brand"><div class="name">PROAGENT</div><div class="sub">Tracking Platform</div></div>
   <div class="sb-nav">
     <button class="sb-link" data-nav="home" onclick="goHome()"><span class="sb-ic">🏠</span>Trang chủ</button>
-    <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Sitetour</button>
+    <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Check in</button>
     <button class="sb-link" data-nav="acceptance" onclick="goAcceptanceHome()"><span class="sb-ic">✅</span>Nghiệm thu</button>
     <button class="sb-link" id="sidebar-admin-link" data-nav="admin" style="display:none;" onclick="goAdmin()"><span class="sb-ic">⚙️</span>Quản trị</button>
   </div>
@@ -391,7 +391,7 @@
       <div class="home-grid">
       <div class="tap-card" onclick="goSitetourList()">
         <div class="icon blue">📍</div>
-        <div><div class="t">Sitetour</div><div class="d">Checkin điểm chỉ định bằng GPS + ảnh</div></div>
+        <div><div class="t">Check in</div><div class="d">Check in/out hoạt động online hoặc offline</div></div>
         <div class="chev">›</div>
       </div>
       <div class="tap-card" onclick="goAcceptanceHome()">
@@ -415,12 +415,12 @@
   <div class="screen" id="screen-sitetour-list">
     <div class="topbar">
       <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">SITETOUR</span><span class="sub">Chọn điểm checkin</span></div>
+      <div class="brand"><span class="name">CHECK IN</span><span class="sub">Chọn hoạt động</span></div>
       <button class="topbar-chip" onclick="goSitetourHistory()">🕐 Lịch sử</button>
     </div>
     <div style="padding-top:18px;">
       <div id="st-list-banner"></div>
-      <input id="st-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." style="margin-bottom:14px;" oninput="stCheckpointSetSearch(this.value)">
+      <input id="st-search-input" placeholder="🔍 Tìm theo tên hoạt động, địa chỉ..." style="margin-bottom:14px;" oninput="stCheckpointSetSearch(this.value)">
       <div id="st-checkpoint-list" class="pick-grid"></div>
     </div>
   </div>
@@ -429,26 +429,28 @@
   <div class="screen" id="screen-sitetour-checkin">
     <div class="topbar">
       <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name">CHECKIN</span><span class="sub" id="st-checkin-point-name">—</span></div>
+      <div class="brand"><span class="name" id="st-checkin-action-title">CHECK IN</span><span class="sub" id="st-checkin-point-name">—</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
       <div id="st-checkin-banner"></div>
 
-      <label class="step-label" style="margin-top:0;">Bước 1 — Vị trí GPS</label>
-      <div class="gps-box">
-        <div class="dot" id="gps-dot"></div>
-        <div class="txt"><span class="lbl">Tọa độ hiện tại</span><span id="gps-coords">Chưa lấy vị trí</span></div>
+      <div id="st-gps-step">
+        <label class="step-label" style="margin-top:0;">Bước 1 — Vị trí GPS</label>
+        <div class="gps-box">
+          <div class="dot" id="gps-dot"></div>
+          <div class="txt"><span class="lbl">Tọa độ hiện tại</span><span id="gps-coords">Chưa lấy vị trí</span></div>
+        </div>
+        <button class="btn btn-outline" style="margin-top:10px;" onclick="captureGPS()">📡 Bật GPS & lấy vị trí</button>
       </div>
-      <button class="btn btn-outline" style="margin-top:10px;" onclick="captureGPS()">📡 Bật GPS & lấy vị trí</button>
 
-      <label>Bước 2 — Ảnh xác nhận</label>
+      <label class="step-label" id="st-photo-step-label">Bước 2 — Ảnh xác nhận</label>
       <input type="file" accept="image/*" capture="environment" id="photo-input" onchange="onPhotoSelected(event)" style="display:none;">
       <label for="photo-input" class="btn btn-outline" style="margin-top:0;">📷 Chọn / chụp ảnh</label>
       <div class="hint" id="photo-filename">Chưa chọn ảnh</div>
       <img id="photo-preview" class="photo-preview" style="display:none;">
 
-      <button class="btn btn-primary" style="margin-top:24px;" id="submit-checkin-btn" disabled onclick="submitCheckinNow()">Ghi nhận checkin</button>
+      <button class="btn btn-primary" style="margin-top:24px;" id="submit-checkin-btn" disabled onclick="submitCheckinNow()">Ghi nhận</button>
       <div class="progress-wrap" id="checkin-progress-wrap" style="display:none;">
         <div class="progress-track"><div class="progress-fill" id="checkin-progress-fill"></div></div>
         <div class="progress-label" id="checkin-progress-label">0%</div>
@@ -460,13 +462,13 @@
   <div class="screen" id="screen-sitetour-result">
     <div class="topbar">
       <span></span>
-      <div class="brand"><span class="name">KẾT QUẢ</span><span class="sub">Checkin</span></div>
+      <div class="brand"><span class="name">KẾT QUẢ</span><span class="sub">Check in/out</span></div>
       <span></span>
     </div>
     <div class="stamp-wrap" id="stamp-container"></div>
     <div style="margin-top:auto;">
       <button class="btn btn-primary" onclick="goHome()">Về trang chủ</button>
-      <button class="btn btn-ghost" onclick="goSitetourList()">Checkin điểm khác</button>
+      <button class="btn btn-ghost" onclick="goSitetourList()">Chọn hoạt động khác</button>
     </div>
   </div>
 
@@ -474,7 +476,7 @@
   <div class="screen" id="screen-sitetour-history">
     <div class="topbar">
       <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name">LỊCH SỬ</span><span class="sub">Checkin đã ghi nhận</span></div>
+      <div class="brand"><span class="name">LỊCH SỬ</span><span class="sub">Check in/out đã ghi nhận</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" id="st-history-list"></div>
@@ -539,7 +541,7 @@
   <div class="screen" id="screen-admin">
     <div class="topbar">
       <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">QUẢN TRỊ</span><span class="sub">Accounts · Vùng · Chi nhánh · Checkpoint</span></div>
+      <div class="brand"><span class="name">QUẢN TRỊ</span><span class="sub">Accounts · Vùng · Chi nhánh · Hoạt động</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;">
@@ -547,7 +549,7 @@
         <div class="tab active" data-tab="accounts" onclick="switchAdminTab('accounts')">Tài khoản</div>
         <div class="tab" data-tab="regions" onclick="switchAdminTab('regions')">Vùng</div>
         <div class="tab" data-tab="branches" onclick="switchAdminTab('branches')">Chi nhánh</div>
-        <div class="tab" data-tab="checkpoints" onclick="switchAdminTab('checkpoints')">Checkpoint</div>
+        <div class="tab" data-tab="checkpoints" onclick="switchAdminTab('checkpoints')">Hoạt động</div>
       </div>
       <div id="admin-tab-content"></div>
     </div>
@@ -940,43 +942,59 @@ async function goSitetourList() {
   }
 }
 
+function activityTypeBadge(cp) {
+  return `<span class="badge ${cp.activity_type==='online'?'approved':'pendingsm'}" style="margin-left:6px;">${cp.activity_type==='online'?'Online':'Offline'}</span>`;
+}
+
 function renderCheckpointList() {
   const wrap = document.getElementById('st-checkpoint-list');
   if (!state.checkpoints.length) {
-    wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có điểm checkin nào trong vùng của bạn.</div>';
+    wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có hoạt động nào.</div>';
     return;
   }
   const filtered = filterRows(state.checkpoints, stCheckpointSearch, ['checkpoint_name', 'address']);
   if (!filtered.length) {
-    wrap.innerHTML = '<div class="empty">Không tìm thấy điểm checkin nào khớp.</div>';
+    wrap.innerHTML = '<div class="empty">Không tìm thấy hoạt động nào khớp.</div>';
     return;
   }
   wrap.innerHTML = filtered.map(cp => `
-    <div class="pick ${state.selectedCheckpoint && state.selectedCheckpoint.checkpoint_id===cp.checkpoint_id?'selected':''}" onclick="selectCheckpoint('${cp.checkpoint_id}')">
-      <div><div class="t">${cp.checkpoint_name}</div><div class="s">${cp.address || 'Chưa có địa chỉ'}</div></div>
-      <div>${state.selectedCheckpoint && state.selectedCheckpoint.checkpoint_id===cp.checkpoint_id ? '✅' : ''}</div>
+    <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
+      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div></div>
     </div>`).join('');
 }
 
-function selectCheckpoint(id) {
+let nextActivityAction = 'checkin';
+
+async function selectCheckpoint(id) {
   state.selectedCheckpoint = state.checkpoints.find(c => c.checkpoint_id === id);
+  nextActivityAction = 'checkin';
+  try {
+    const status = await api('getActivityCheckStatus', { username: state.user.username, activity_id: id });
+    nextActivityAction = status.next_action;
+  } catch (e) { /* lỗi hiếm -> mặc định checkin, không chặn người dùng */ }
   goCheckinCapture();
 }
 
 function goCheckinCapture() {
   state.gps = null; state.photoBase64 = null; state.photoThumbBase64 = null;
-  state.checkinId = genShortCode('CI'); // cố định cho lượt checkin này -> chống ghi trùng nếu bấm nhiều lần
+  state.checkinId = genShortCode('CI'); // cố định cho lượt này -> chống ghi trùng nếu bấm nhiều lần
   document.getElementById('gps-dot').classList.remove('on');
   document.getElementById('gps-coords').innerText = 'Chưa lấy vị trí';
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-input').value = '';
   document.getElementById('photo-filename').innerText = 'Chưa chọn ảnh';
   const submitBtn = document.getElementById('submit-checkin-btn');
+  const actionLabel = nextActivityAction === 'checkout' ? 'Check out' : 'Check in';
   submitBtn.disabled = true;
-  submitBtn.innerHTML = 'Ghi nhận checkin';
+  submitBtn.innerHTML = `Ghi nhận ${actionLabel}`;
   setCheckinProgress(0, false);
   banner('st-checkin-banner', '', '');
+  document.getElementById('st-checkin-action-title').innerText = actionLabel.toUpperCase();
   document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
+
+  const isOffline = state.selectedCheckpoint.activity_type !== 'online';
+  document.getElementById('st-gps-step').style.display = isOffline ? 'block' : 'none';
+  document.getElementById('st-photo-step-label').innerText = isOffline ? 'Bước 2 — Ảnh xác nhận' : 'Bước 1 — Ảnh xác nhận';
   showScreen('screen-sitetour-checkin');
 }
 
@@ -1070,7 +1088,8 @@ function onPhotoSelected(evt) {
 }
 
 function checkSubmitReady() {
-  document.getElementById('submit-checkin-btn').disabled = !(state.gps && state.photoBase64);
+  const isOffline = state.selectedCheckpoint && state.selectedCheckpoint.activity_type !== 'online';
+  document.getElementById('submit-checkin-btn').disabled = !((!isOffline || state.gps) && state.photoBase64);
 }
 
 function setCheckinProgress(pct, visible) {
@@ -1108,14 +1127,17 @@ async function submitCheckinNow() {
   if (isSubmittingCheckin) return; // chặn double-tap ngay từ phía client, không chờ tới backend
   isSubmittingCheckin = true;
   const btn = document.getElementById('submit-checkin-btn');
+  const actionLabel = nextActivityAction === 'checkout' ? 'Check out' : 'Check in';
   btn.disabled = true; btn.innerHTML = '<span class="loader"></span>Đang gửi...';
   setCheckinProgress(0, true);
+  const isOffline = state.selectedCheckpoint.activity_type !== 'online';
   try {
-    const result = await apiWithProgress('submitCheckin', {
+    const result = await apiWithProgress('submitActivityLog', {
       username: state.user.username,
       full_name: state.user.full_name,
       checkpoint_id: state.selectedCheckpoint.checkpoint_id,
-      lat: state.gps.lat, long: state.gps.long,
+      action_type: nextActivityAction,
+      lat: isOffline ? state.gps.lat : null, long: isOffline ? state.gps.long : null,
       photo_base64: state.photoBase64,
       photo_thumb_base64: state.photoThumbBase64,
       checkin_id: state.checkinId
@@ -1124,7 +1146,7 @@ async function submitCheckinNow() {
     showScreen('screen-sitetour-result');
   } catch (e) {
     banner('st-checkin-banner','err', e.message);
-    btn.disabled = false; btn.innerHTML = 'Ghi nhận checkin';
+    btn.disabled = false; btn.innerHTML = `Ghi nhận ${actionLabel}`;
   } finally {
     isSubmittingCheckin = false;
     setCheckinProgress(0, false);
@@ -1133,14 +1155,19 @@ async function submitCheckinNow() {
 
 function renderStampResult(result) {
   const valid = result.valid;
+  const actionLabel = (nextActivityAction === 'checkout' ? 'CHECK OUT' : 'CHECK IN');
+  const reasons = [];
+  if (!result.time_valid) reasons.push('ngoài khung giờ cho phép');
+  if (result.gps_valid === false) reasons.push('ngoài phạm vi vị trí');
   document.getElementById('stamp-container').innerHTML = `
     <div class="stamp ${valid?'':'invalid'}">
-      ${valid ? 'CHECKIN HỢP LỆ' : 'NGOÀI PHẠM VI'}
+      ${actionLabel} ${valid ? 'HỢP LỆ' : 'KHÔNG HỢP LỆ'}
       <span class="sub">${new Date().toLocaleString('vi-VN')}</span>
     </div>
     <div class="meta">
-      Khoảng cách tới điểm chỉ định: <b class="mono">${result.distance_m}m</b> (cho phép ${result.radius_m}m)<br>
-      Điểm: ${state.selectedCheckpoint.checkpoint_name}
+      ${result.distance_m != null ? `Khoảng cách tới hoạt động: <b class="mono">${result.distance_m}m</b> (cho phép ${result.radius_m}m)<br>` : ''}
+      ${!valid && reasons.length ? `Lý do: ${reasons.join(', ')}<br>` : ''}
+      Hoạt động: ${state.selectedCheckpoint.checkpoint_name}
     </div>`;
 }
 
@@ -1163,9 +1190,13 @@ async function goSitetourHistory() {
 
 function stHistorySetPage(p) { stHistoryPage = p; renderStHistory(); }
 
+function actionTypeLabel(r) {
+  return r.action_type === 'checkout' ? 'Check out' : 'Check in';
+}
+
 function renderStHistory() {
   const wrap = document.getElementById('st-history-list');
-  if (!stHistoryRows.length) { wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có checkin nào.</div>'; return; }
+  if (!stHistoryRows.length) { wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có check in/out nào.</div>'; return; }
   const { pageRows, page, totalPages, total } = sliceForPage(stHistoryRows, stHistoryPage);
   const thumb = r => {
     if (r.photo_thumb) return `<img class="thumb" src="${r.photo_thumb}" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}')">`;
@@ -1176,22 +1207,23 @@ function renderStHistory() {
     <div class="row">
       <div class="l" style="display:flex;gap:12px;align-items:center;min-width:0;">
         ${thumb(r)}
-        <div style="min-width:0;"><div class="t">${r.checkpoint_name}</div><div class="s">${r.sa_name || r.sa_username} · ${fmtDate(r.timestamp)}</div></div>
+        <div style="min-width:0;"><div class="t">${r.checkpoint_name} <span class="badge pendingsm">${actionTypeLabel(r)}</span></div><div class="s">${r.sa_name || r.sa_username} · ${fmtDate(r.timestamp)}</div></div>
       </div>
-      <div class="r" style="flex-shrink:0;"><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span><div style="margin-top:8px;">${fmtDistance(r.distance_m)}</div></div>
+      <div class="r" style="flex-shrink:0;"><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Không hợp lệ'}</span><div style="margin-top:8px;">${fmtDistance(r.distance_m)}</div></div>
     </div>`).join('') + renderPager(page, totalPages, total, 'stHistorySetPage') + '</div>';
   const tableHtml = `
     <div class="card dtable-wrap" style="padding:0;">
       <table class="dtable">
-        <thead><tr><th>Hình ảnh</th><th>Điểm checkin</th><th>Người checkin</th><th>Thời gian</th><th>Khoảng cách</th><th>Trạng thái</th></tr></thead>
+        <thead><tr><th>Hình ảnh</th><th>Hoạt động</th><th>Loại</th><th>Người thực hiện</th><th>Thời gian</th><th>Khoảng cách</th><th>Trạng thái</th></tr></thead>
         <tbody>` + pageRows.map(r => `
           <tr>
             <td>${thumb(r)}</td>
             <td>${r.checkpoint_name}</td>
+            <td class="nowrap">${actionTypeLabel(r)}</td>
             <td>${r.sa_name || r.sa_username}</td>
             <td class="mono">${fmtDate(r.timestamp)}</td>
             <td class="num mono">${fmtDistance(r.distance_m)}</td>
-            <td><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span></td>
+            <td><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Không hợp lệ'}</span></td>
           </tr>`).join('') + `
         </tbody>
       </table>
@@ -1891,22 +1923,42 @@ function renderCheckpointsView() {
 
   if (cpViewMode === 'form') {
     const editing = editingCheckpointId ? cps.find(c => c.checkpoint_id === editingCheckpointId) : null;
+    const isOffline = !editing || editing.activity_type !== 'online';
     wrap.innerHTML = `
       <div class="card">
-        <div class="eyebrow">${editing ? 'Sửa điểm checkin' : 'Tạo điểm checkin mới'}</div>
-        <div class="hint" style="margin-bottom:10px;">Điểm checkin áp dụng chung cho toàn bộ sales, không chia theo vùng.</div>
-        <label style="margin-top:0;">Tên điểm</label><input id="cp-name" placeholder="vd: Sales Gallery Masterise" value="${editing ? editing.checkpoint_name : ''}">
-        <label>Địa chỉ</label><input id="cp-address" placeholder="vd: 275 Võ Nguyên Giáp, P. An Phú, TP Thủ Đức" value="${editing ? (editing.address || '') : ''}">
-        <label>Latitude</label><input id="cp-lat" type="number" step="0.000001" placeholder="vd: 10.8030065" value="${editing ? editing.lat : ''}">
-        <label>Longitude</label><input id="cp-long" type="number" step="0.000001" placeholder="vd: 106.7767749" value="${editing ? editing.long : ''}">
-        <label>Bán kính cho phép (m)</label><input id="cp-radius" type="number" value="${editing ? editing.radius_m : 100}">
-        <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
+        <div class="eyebrow">${editing ? 'Sửa hoạt động' : 'Tạo hoạt động mới'}</div>
+        <div class="hint" style="margin-bottom:10px;">Hoạt động áp dụng chung cho toàn bộ sales, không chia theo vùng.</div>
+        <label style="margin-top:0;">Tên hoạt động</label><input id="cp-name" placeholder="vd: Sales Gallery Masterise" value="${editing ? editing.checkpoint_name : ''}">
+        <label>Loại hoạt động</label>
+        <select id="cp-type" onchange="toggleActivityTypeFields()">
+          <option value="offline" ${isOffline ? 'selected' : ''}>Offline — cần vị trí GPS khi check in/out</option>
+          <option value="online" ${!isOffline ? 'selected' : ''}>Online — chỉ cần ảnh chụp màn hình</option>
+        </select>
+        <div id="cp-offline-fields">
+          <label>Địa chỉ</label><input id="cp-address" placeholder="vd: 275 Võ Nguyên Giáp, P. An Phú, TP Thủ Đức" value="${editing ? (editing.address || '') : ''}">
+          <label>Latitude</label><input id="cp-lat" type="number" step="0.000001" placeholder="vd: 10.8030065" value="${editing && editing.lat != null ? editing.lat : ''}">
+          <label>Longitude</label><input id="cp-long" type="number" step="0.000001" placeholder="vd: 106.7767749" value="${editing && editing.long != null ? editing.long : ''}">
+          <label>Bán kính cho phép (m)</label><input id="cp-radius" type="number" value="${editing ? editing.radius_m : 100}">
+          <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
+        </div>
+        <label>Khung giờ Check in (bấm ngoài khung này sẽ bị tính Ngoài giờ)</label>
+        <div class="btn-row" style="margin-top:0;">
+          <div style="flex:1;"><input id="cp-checkin-start" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkin_start) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkin-end" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkin_end) : ''}"></div>
+        </div>
+        <label>Khung giờ Check out</label>
+        <div class="btn-row" style="margin-top:0;">
+          <div style="flex:1;"><input id="cp-checkout-start" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkout_start) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkout-end" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkout_end) : ''}"></div>
+        </div>
         <div class="btn-row" style="margin-top:16px;">
-          <button class="btn btn-primary" onclick="saveCheckpoint(event)">${editing ? 'Cập nhật điểm checkin' : 'Tạo điểm checkin'}</button>
+          <button class="btn btn-primary" onclick="saveCheckpoint(event)">${editing ? 'Cập nhật hoạt động' : 'Tạo hoạt động'}</button>
           <button class="btn btn-outline" onclick="cpShowList()">Hủy</button>
         </div>
         <div id="cp-banner"></div>
       </div>`;
+    buildCustomSelect(document.getElementById('cp-type'));
+    toggleActivityTypeFields();
     return;
   }
 
@@ -1914,45 +1966,73 @@ function renderCheckpointsView() {
   const cpPageInfo = sliceForPage(filtered, cpPage);
   const toolbarHtml = `
     <div class="card admin-toolbar">
-      <input id="cp-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." value="${cpSearch}" oninput="cpSetSearch(this.value)">
-      <button class="btn btn-primary" onclick="cpShowCreate()">+ Tạo điểm checkin</button>
+      <input id="cp-search-input" placeholder="🔍 Tìm theo tên, địa chỉ..." value="${cpSearch}" oninput="cpSetSearch(this.value)">
+      <button class="btn btn-primary" onclick="cpShowCreate()">+ Tạo hoạt động</button>
     </div>`;
   const cpActions = c => `
     <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
     <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>`;
+  const typeBadge = c => `<span class="badge ${c.activity_type==='online'?'approved':'pendingsm'}">${c.activity_type==='online'?'Online':'Offline'}</span>`;
+  const windowsText = c => `Check in: ${fmtDate(c.checkin_start)} – ${fmtDate(c.checkin_end)} · Check out: ${fmtDate(c.checkout_start)} – ${fmtDate(c.checkout_end)}`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + cpPageInfo.pageRows.map(c => `
       <div class="row">
-        <div class="l"><div class="t">${c.checkpoint_name}</div><div class="s">${c.address || 'Chưa có địa chỉ'}</div><div class="s mono">Bán kính ${c.radius_m}m</div></div>
+        <div class="l"><div class="t">${c.checkpoint_name} ${typeBadge(c)}</div><div class="s">${c.activity_type==='online' ? 'Không cần vị trí' : (c.address || 'Chưa có địa chỉ')}</div><div class="s mono">${windowsText(c)}</div></div>
         <div class="r"><div style="display:flex;gap:10px;">${cpActions(c)}</div></div>
       </div>`).join('') + renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage') + '</div>' +
-    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên điểm</th><th>Địa chỉ</th><th>Bán kính</th><th>Thao tác</th></tr></thead><tbody>' +
+    '<div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Tên hoạt động</th><th>Loại</th><th>Địa chỉ</th><th>Khung giờ</th><th>Thao tác</th></tr></thead><tbody>' +
       cpPageInfo.pageRows.map(c => `<tr>
         <td>${c.checkpoint_name}</td>
-        <td>${c.address || 'Chưa có địa chỉ'}</td>
-        <td class="num mono">${c.radius_m}m</td>
+        <td class="nowrap">${typeBadge(c)}</td>
+        <td>${c.activity_type==='online' ? '—' : (c.address || 'Chưa có địa chỉ')}</td>
+        <td class="mono">${windowsText(c)}</td>
         <td class="nowrap"><div style="display:flex;gap:10px;">${cpActions(c)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')}</div>`
-  ) : `<div class="card"><div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div></div>`;
+  ) : `<div class="card"><div class="empty">${cpSearch ? 'Không tìm thấy hoạt động nào khớp.' : 'Chưa có hoạt động nào.'}</div></div>`;
   wrap.innerHTML = toolbarHtml + renderListCount(filtered.length) + listHtml;
+}
+
+function toggleActivityTypeFields() {
+  const isOffline = document.getElementById('cp-type').value !== 'online';
+  document.getElementById('cp-offline-fields').style.display = isOffline ? 'block' : 'none';
+}
+
+// datetime-local input cần "YYYY-MM-DDTHH:mm" theo giờ local của trình duyệt,
+// khác định dạng ISO UTC server trả về.
+function fmtDatetimeLocal(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 async function saveCheckpoint(evt) {
   const btn = evt ? evt.currentTarget : null;
   if (btn && btn.disabled) return;
   const editing = editingCheckpointId;
+  const activityType = document.getElementById('cp-type').value;
+  const isOffline = activityType !== 'online';
   const payload = {
     checkpoint_name: document.getElementById('cp-name').value.trim(),
-    address: document.getElementById('cp-address').value.trim(),
-    lat: document.getElementById('cp-lat').value,
-    long: document.getElementById('cp-long').value,
-    radius_m: document.getElementById('cp-radius').value || 100,
+    activity_type: activityType,
+    address: isOffline ? document.getElementById('cp-address').value.trim() : '',
+    lat: isOffline ? document.getElementById('cp-lat').value : null,
+    long: isOffline ? document.getElementById('cp-long').value : null,
+    radius_m: isOffline ? (document.getElementById('cp-radius').value || 100) : 0,
+    checkin_start: document.getElementById('cp-checkin-start').value,
+    checkin_end: document.getElementById('cp-checkin-end').value,
+    checkout_start: document.getElementById('cp-checkout-start').value,
+    checkout_end: document.getElementById('cp-checkout-end').value,
   };
-  if (!payload.checkpoint_name || !payload.lat || !payload.long) { banner('cp-banner','err','Nhập đủ Tên điểm, Latitude, Longitude.'); return; }
+  if (!payload.checkpoint_name) { banner('cp-banner','err','Nhập Tên hoạt động.'); return; }
+  if (isOffline && (!payload.lat || !payload.long)) { banner('cp-banner','err','Hoạt động offline cần Latitude và Longitude.'); return; }
+  if (!payload.checkin_start || !payload.checkin_end) { banner('cp-banner','err','Nhập đủ khung giờ Check in.'); return; }
+  if (!payload.checkout_start || !payload.checkout_end) { banner('cp-banner','err','Nhập đủ khung giờ Check out.'); return; }
   if (btn) btn.disabled = true;
   try {
-    if (editing) { await api('adminUpdateCheckpoint', { checkpoint_id: editing, ...payload }); banner('cp-banner','ok','Đã cập nhật điểm checkin.'); }
-    else { await api('adminCreateCheckpoint', payload); banner('cp-banner','ok','Đã tạo điểm checkin.'); }
+    if (editing) { await api('adminUpdateCheckpoint', { checkpoint_id: editing, ...payload }); banner('cp-banner','ok','Đã cập nhật hoạt động.'); }
+    else { await api('adminCreateCheckpoint', payload); banner('cp-banner','ok','Đã tạo hoạt động.'); }
     cpViewMode = 'list';
     editingCheckpointId = null;
     setTimeout(() => renderAdminCheckpoints(), 500);
@@ -1960,7 +2040,7 @@ async function saveCheckpoint(evt) {
 }
 
 async function deleteCheckpoint(checkpoint_id) {
-  if (!confirm('Xóa điểm checkin này? Lịch sử checkin cũ vẫn giữ nguyên nhưng sẽ không còn chọn được điểm này khi checkin mới.')) return;
+  if (!confirm('Xóa hoạt động này? Lịch sử check in/out cũ vẫn giữ nguyên nhưng sẽ không còn chọn được hoạt động này nữa.')) return;
   try { await api('adminDeleteCheckpoint', { checkpoint_id }); renderAdminCheckpoints(); }
   catch (e) { alert(e.message); }
 }
