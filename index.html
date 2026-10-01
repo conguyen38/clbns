@@ -337,7 +337,7 @@
   <div class="sb-nav">
     <button class="sb-link" data-nav="home" onclick="goHome()"><span class="sb-ic">🏠</span>Trang chủ</button>
     <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Sitetour</button>
-    <button class="sb-link" data-nav="meeting" onclick="goMeetingHome()"><span class="sb-ic">📝</span>Meeting</button>
+    <button class="sb-link" data-nav="acceptance" onclick="goAcceptanceHome()"><span class="sb-ic">✅</span>Nghiệm thu</button>
     <button class="sb-link" id="sidebar-admin-link" data-nav="admin" style="display:none;" onclick="goAdmin()"><span class="sb-ic">⚙️</span>Quản trị</button>
   </div>
   <div class="sb-spacer"></div>
@@ -394,9 +394,9 @@
         <div><div class="t">Sitetour</div><div class="d">Checkin điểm chỉ định bằng GPS + ảnh</div></div>
         <div class="chev">›</div>
       </div>
-      <div class="tap-card" onclick="goMeetingHome()">
-        <div class="icon amber">📝</div>
-        <div><div class="t">Meeting</div><div class="d">Tạo & duyệt biên bản gặp đối tác</div></div>
+      <div class="tap-card" onclick="goAcceptanceHome()">
+        <div class="icon amber">✅</div>
+        <div><div class="t">Nghiệm thu</div><div class="d">Gửi ảnh chụp màn hình & duyệt hoạt động</div></div>
         <div class="chev">›</div>
       </div>
       <div class="tap-card" id="home-admin-card" style="display:none;" onclick="goAdmin()">
@@ -480,82 +480,59 @@
     <div style="padding-top:18px;" id="st-history-list"></div>
   </div>
 
-  <!-- ===================== MEETING: home ===================== -->
-  <div class="screen" id="screen-meeting-home">
+  <!-- ===================== ACCEPTANCE: home ===================== -->
+  <div class="screen" id="screen-acceptance-home">
     <div class="topbar">
       <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">MEETING</span><span class="sub">Biên bản làm việc</span></div>
+      <div class="brand"><span class="name">NGHIỆM THU</span><span class="sub">Hoạt động & bằng chứng</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;">
-      <div class="tabs" id="meeting-tabs"></div>
-      <div id="meeting-tab-content"></div>
+      <div class="tabs" id="acceptance-tabs"></div>
+      <div id="acceptance-tab-content"></div>
     </div>
   </div>
 
-  <!-- ===================== MEETING: new ===================== -->
-  <div class="screen" id="screen-meeting-new">
+  <!-- ===================== ACCEPTANCE: new ===================== -->
+  <div class="screen" id="screen-acceptance-new">
     <div class="topbar">
-      <button class="back" onclick="goMeetingHome()">‹</button>
-      <div class="brand"><span class="name">TẠO MEETING</span><span class="sub">Meeting Minutes</span></div>
+      <button class="back" onclick="goAcceptanceHome()">‹</button>
+      <div class="brand"><span class="name">TẠO NGHIỆM THU</span><span class="sub">Gửi ảnh chụp màn hình</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
-      <div id="mn-banner"></div>
+      <div id="nt-banner"></div>
 
       <div class="card" style="padding:13px 16px;">
-        <div class="eyebrow" style="margin-bottom:2px;">Mã meeting</div>
-        <div class="mono" id="mn-code" style="font-size:15px;font-weight:600;color:var(--ink);"></div>
+        <div class="eyebrow" style="margin-bottom:2px;">Mã nghiệm thu</div>
+        <div class="mono" id="nt-code" style="font-size:15px;font-weight:600;color:var(--ink);"></div>
       </div>
 
-      <label style="margin-top:0;">Chi nhánh (có thể chọn nhiều)</label>
-      <div class="card" id="mn-branch-list" style="max-height:220px;overflow-y:auto;"></div>
+      <label style="margin-top:0;">Tên hoạt động</label>
+      <input id="nt-activity-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage" oninput="checkAcceptanceSubmitReady()">
 
-      <label>Ngày họp</label>
-      <input id="mn-date" type="date">
-      <div class="btn-row" style="margin-top:10px;">
-        <div style="flex:1;">
-          <label style="margin-top:0;">Giờ bắt đầu</label>
-          <input id="mn-start-time" type="time">
-        </div>
-        <div style="flex:1;">
-          <label style="margin-top:0;">Giờ kết thúc</label>
-          <input id="mn-end-time" type="time">
-        </div>
-      </div>
+      <label>Mô tả (không bắt buộc)</label>
+      <textarea id="nt-description" placeholder="Mô tả thêm về hoạt động..."></textarea>
 
-      <label>Mục đích cuộc họp</label>
-      <select id="mn-purpose-type" onchange="onPurposeTypeChange()"></select>
-      <div id="mn-purpose-other-field" style="display:none;">
-        <textarea id="mn-purpose-other" placeholder="Nhập mục đích cụ thể..." style="margin-top:8px;"></textarea>
-      </div>
+      <label>Ảnh chụp màn hình</label>
+      <input type="file" accept="image/*" id="nt-photo-input" onchange="onAcceptancePhotoSelected(event)" style="display:none;">
+      <label for="nt-photo-input" class="btn btn-outline" style="margin-top:0;">📷 Chọn ảnh chụp màn hình</label>
+      <div class="hint" id="nt-photo-filename">Chưa chọn ảnh</div>
+      <img id="nt-photo-preview" class="photo-preview" style="display:none;">
 
-      <label>Thành phần tham dự</label>
-      <div class="card" id="mn-attendees-list"></div>
-
-      <label>Xác nhận vị trí (GPS Checkin)</label>
-      <div class="hint" style="margin-bottom:8px;">Hệ thống sẽ so vị trí GPS hiện tại với đúng (các) chi nhánh chị đã chọn ở trên.</div>
-      <div class="gps-box">
-        <div class="dot" id="mn-gps-dot"></div>
-        <div class="txt"><span class="lbl">Tọa độ hiện tại</span><span id="mn-gps-coords">Chưa lấy vị trí</span></div>
-      </div>
-      <button class="btn btn-outline" style="margin-top:10px;" onclick="captureMeetingGPS()">📡 Bật GPS & lấy vị trí</button>
-      <div id="mn-gps-pairing"></div>
-      <div class="hint" id="mn-gps-hint" style="margin-top:6px;"></div>
-
-      <button class="btn btn-primary" style="margin-top:22px;" id="mn-submit-btn" disabled onclick="submitMeetingNow()">Gửi duyệt</button>
+      <button class="btn btn-primary" style="margin-top:22px;" id="nt-submit-btn" disabled onclick="submitAcceptanceNow()">Gửi duyệt</button>
       <button class="btn btn-ghost" onclick="goHome()">Quay về trang chủ</button>
     </div>
   </div>
 
-  <!-- ===================== MEETING: detail ===================== -->
-  <div class="screen" id="screen-meeting-detail">
+  <!-- ===================== ACCEPTANCE: detail ===================== -->
+  <div class="screen" id="screen-acceptance-detail">
     <div class="topbar">
-      <button class="back" onclick="goMeetingHome()">‹</button>
-      <div class="brand"><span class="name">CHI TIẾT</span><span class="sub">Meeting Minutes</span></div>
+      <button class="back" onclick="goAcceptanceHome()">‹</button>
+      <div class="brand"><span class="name">CHI TIẾT</span><span class="sub">Nghiệm thu</span></div>
       <span></span>
     </div>
-    <div style="padding-top:18px;" id="meeting-detail-body"></div>
+    <div style="padding-top:18px;" id="acceptance-detail-body"></div>
   </div>
 
   <!-- ===================== ADMIN ===================== -->
@@ -615,22 +592,6 @@
    ========================================================= */
 const API_URL = "/api";
 
-/* Shortlist mục đích cuộc họp — chỉnh trực tiếp tại đây nếu cần thêm/bớt.
-   "Khác" luôn phải là phần tử cuối cùng — bắt buộc nhập nội dung khi chọn. */
-const MEETING_PURPOSES = [
-  'Giới thiệu sản phẩm/dự án mới',
-  'Đào tạo nghiệp vụ/quy trình',
-  'Trao đổi định kỳ tình hình kinh doanh',
-  'Xử lý vấn đề phát sinh/khiếu nại',
-  'Ký kết hợp tác/thỏa thuận',
-  'Huddle',
-  'Khác'
-];
-// Chỉ hiện với người tạo là SM (SA không thấy option này khi tạo meeting).
-const MEETING_PURPOSE_SM_ONLY = 'Họp chi nhánh (SM/TL)';
-
-/* Shortlist thành phần tham dự — chỉnh trực tiếp tại đây nếu cần thêm/bớt. */
-const ATTENDEE_ROLES = ['Lãnh đạo Chi nhánh','Lãnh đạo Vùng','PRM','SD','SM','SSM','SA','PNS','BD Miền','BD Vùng'];
 
 /* ============== STATE ============== */
 let state = {
@@ -640,12 +601,11 @@ let state = {
   selectedCheckpoint: null,
   gps: null,
   photoBase64: null,
-  meetingTab: 'new',
+  acceptanceTab: 'new',
   adminTab: 'accounts',
-  regionsCache: [],
-  branchesCache: [],
-  resubmitFrom: null, // meeting_id của bản bị từ chối đang được sửa & gửi lại
-  meetingGps: null,
+  acceptancePhotoBase64: null,
+  acceptancePhotoThumbBase64: null,
+  acceptanceResubmitFrom: null, // acceptance_id của bản bị từ chối đang được sửa & gửi lại
 };
 
 /* ============== API HELPER ============== */
@@ -806,7 +766,7 @@ function statusLabel(s) {
 const SIDEBAR_NAV_MAP = {
   'screen-home': 'home',
   'screen-sitetour-list': 'sitetour', 'screen-sitetour-checkin': 'sitetour', 'screen-sitetour-result': 'sitetour', 'screen-sitetour-history': 'sitetour',
-  'screen-meeting-home': 'meeting', 'screen-meeting-new': 'meeting', 'screen-meeting-detail': 'meeting',
+  'screen-acceptance-home': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
   'screen-admin': 'admin',
 };
 
@@ -1241,316 +1201,231 @@ function renderStHistory() {
 }
 
 /* =========================================================
-   MEETING
+   ACCEPTANCE (Nghiệm thu)
    ========================================================= */
-function goMeetingHome() {
+function goAcceptanceHome() {
   const isCreator = state.user.role === 'SA' || state.user.role === 'SM';
   const isApprover = state.user.role === 'SM' || state.user.role === 'SSM';
   const tabs = [];
-  if (isCreator) tabs.push({k:'new', label:'Tạo meeting'});
+  if (isCreator) tabs.push({k:'new', label:'Tạo mới'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
   tabs.push({k:'history', label:'Lịch sử duyệt'});
-  state.meetingTab = tabs[0].k;
-  document.getElementById('meeting-tabs').innerHTML = tabs.map(t =>
-    `<div class="tab ${t.k===state.meetingTab?'active':''}" data-tab="${t.k}" onclick="switchMeetingTab('${t.k}')">${t.label}</div>`).join('');
-  showScreen('screen-meeting-home');
-  renderMeetingTab();
+  state.acceptanceTab = tabs[0].k;
+  document.getElementById('acceptance-tabs').innerHTML = tabs.map(t =>
+    `<div class="tab ${t.k===state.acceptanceTab?'active':''}" data-tab="${t.k}" onclick="switchAcceptanceTab('${t.k}')">${t.label}</div>`).join('');
+  showScreen('screen-acceptance-home');
+  renderAcceptanceTab();
 }
 
-function switchMeetingTab(k) {
-  state.meetingTab = k;
-  document.querySelectorAll('#meeting-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === k));
-  renderMeetingTab();
+function switchAcceptanceTab(k) {
+  state.acceptanceTab = k;
+  document.querySelectorAll('#acceptance-tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === k));
+  renderAcceptanceTab();
 }
 
-let meetingRowsCache = [];
-let meetingRowsPage = 1;
-let meetingRowsIsApproval = false;
+let acceptanceRowsCache = [];
+let acceptanceRowsPage = 1;
+let acceptanceRowsIsApproval = false;
 
-async function renderMeetingTab() {
-  const wrap = document.getElementById('meeting-tab-content');
-  if (state.meetingTab === 'new') {
+async function renderAcceptanceTab() {
+  const wrap = document.getElementById('acceptance-tab-content');
+  if (state.acceptanceTab === 'new') {
     wrap.innerHTML = `
-      <div class="tap-card" onclick="goMeetingNewForm()">
-        <div class="icon amber">📝</div>
-        <div><div class="t">Tạo meeting mới</div><div class="d">Điền Meeting Minutes & gửi duyệt</div></div>
+      <div class="tap-card" onclick="goAcceptanceNewForm()">
+        <div class="icon amber">✅</div>
+        <div><div class="t">Tạo nghiệm thu mới</div><div class="d">Gửi ảnh chụp màn hình & gửi duyệt</div></div>
         <div class="chev">›</div>
       </div>`;
     return;
   }
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
-  meetingRowsPage = 1;
+  acceptanceRowsPage = 1;
   try {
-    if (state.meetingTab === 'approval') {
-      meetingRowsCache = await api('listMeetingsForApproval', { username: state.user.username });
-      meetingRowsIsApproval = true;
+    if (state.acceptanceTab === 'approval') {
+      acceptanceRowsCache = await api('listAcceptancesForApproval', { username: state.user.username });
+      acceptanceRowsIsApproval = true;
     } else {
-      meetingRowsCache = await api('listMeetings', { username: state.user.username, role: state.user.role });
-      meetingRowsCache.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-      meetingRowsIsApproval = false;
+      acceptanceRowsCache = await api('listAcceptances', { username: state.user.username, role: state.user.role });
+      acceptanceRowsCache.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      acceptanceRowsIsApproval = false;
     }
-    renderMeetingRows();
+    renderAcceptanceRows();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
 }
 
-function meetingRowsSetPage(p) { meetingRowsPage = p; renderMeetingRows(); }
+function acceptanceRowsSetPage(p) { acceptanceRowsPage = p; renderAcceptanceRows(); }
 
-function meetingTitle(m) {
-  return m.purpose_type === 'Khác' ? (m.purpose_other || 'Khác') : (m.purpose_type || '(chưa có mục đích)');
-}
-function meetingScopeLabel(m) {
-  return `Chi nhánh: ${m.branch_codes || '—'}`;
-}
-
-function isGpsInvalid(m) {
-  return m.gps_lat && String(m.gps_valid).toUpperCase() !== 'TRUE';
-}
-
-function renderMeetingRows() {
-  const wrap = document.getElementById('meeting-tab-content');
-  const rows = meetingRowsCache;
-  if (!rows.length) { wrap.innerHTML = `<div class="empty"><div class="big">📭</div>${meetingRowsIsApproval?'Không có meeting nào chờ duyệt.':'Chưa có meeting nào.'}</div>`; return; }
-  const { pageRows, page, totalPages, total } = sliceForPage(rows, meetingRowsPage);
+function renderAcceptanceRows() {
+  const wrap = document.getElementById('acceptance-tab-content');
+  const rows = acceptanceRowsCache;
+  if (!rows.length) { wrap.innerHTML = `<div class="empty"><div class="big">📭</div>${acceptanceRowsIsApproval?'Không có hoạt động nào chờ duyệt.':'Chưa có hoạt động nào.'}</div>`; return; }
+  const { pageRows, page, totalPages, total } = sliceForPage(rows, acceptanceRowsPage);
+  const thumb = r => r.screenshot_thumb
+    ? `<img class="thumb" src="${r.screenshot_thumb}" title="Xem ảnh">`
+    : '<span class="thumb-none" title="Không có ảnh">🚫</span>';
   wrap.innerHTML = renderListCount(total) + '<div class="card">' + pageRows.map(m => `
-    <div class="row" style="cursor:pointer;" onclick="openMeetingDetail('${m.meeting_id}')">
-      <div class="l"><div class="t mono" style="font-size:12px;color:var(--slate);">${m.meeting_code || m.meeting_id}</div>
-        <div class="t">${meetingTitle(m)} ${isGpsInvalid(m) ? '<span class="badge rejectedsm" title="GPS ngoài phạm vi chi nhánh đã chọn">⚠️ GPS</span>' : ''}</div>
-        <div class="s">${m.creator_name || m.creator_username} · ${meetingScopeLabel(m)} · ${fmtDate(m.meeting_date || m.created_at)}</div></div>
-      <div class="r"><span class="badge ${String(m.status).toLowerCase()}">${statusLabel(m.status)}</span></div>
-    </div>`).join('') + renderPager(page, totalPages, total, 'meetingRowsSetPage') + '</div>';
+    <div class="row" style="cursor:pointer;" onclick="openAcceptanceDetail('${m.acceptance_id}')">
+      <div class="l" style="display:flex;gap:12px;align-items:center;min-width:0;">
+        ${thumb(m)}
+        <div style="min-width:0;">
+          <div class="t mono" style="font-size:12px;color:var(--slate);">${m.acceptance_code || m.acceptance_id}</div>
+          <div class="t">${m.activity_name}</div>
+          <div class="s">${m.creator_name || m.creator_username} · ${fmtDate(m.created_at)}</div>
+        </div>
+      </div>
+      <div class="r" style="flex-shrink:0;"><span class="badge ${String(m.status).toLowerCase()}">${statusLabel(m.status)}</span></div>
+    </div>`).join('') + renderPager(page, totalPages, total, 'acceptanceRowsSetPage') + '</div>';
 }
 
-function purposeOptionsForRole(role) {
-  const list = [...MEETING_PURPOSES];
-  if (role === 'SM') list.splice(list.length - 1, 0, MEETING_PURPOSE_SM_ONLY); // chèn trước "Khác"
-  return list;
-}
-
-async function goMeetingNewForm(prefill) {
-  showScreen('screen-meeting-new');
-  banner('mn-banner','','');
-  state.resubmitFrom = prefill ? prefill.meeting_id : null;
-  state.meetingGps = null;
-  document.getElementById('mn-gps-dot').classList.remove('on');
-  document.getElementById('mn-gps-coords').innerText = 'Chưa lấy vị trí';
-  document.getElementById('mn-gps-hint').innerText = '';
-  document.getElementById('mn-gps-pairing').innerHTML = '';
-  document.getElementById('mn-submit-btn').disabled = true;
-
-  // Sinh mã meeting mới ngay khi mở form
-  document.getElementById('mn-code').innerText = genMeetingCode();
-
-  if (prefill) {
-    banner('mn-banner','info',`Đang tạo lại từ meeting bị từ chối <b>${prefill.meeting_code || prefill.meeting_id}</b> — thông tin cũ đã được điền sẵn, chị chỉ cần chỉnh sửa phần cần thiết.`);
-  }
-
-  document.getElementById('mn-date').value = prefill ? prefill.meeting_date : '';
-  document.getElementById('mn-start-time').value = prefill ? prefill.start_time : '';
-  document.getElementById('mn-end-time').value = prefill ? prefill.end_time : '';
-
-  // Mục đích cuộc họp — "Họp chi nhánh (SM/TL)" chỉ hiện khi người tạo là SM
-  const options = purposeOptionsForRole(state.user.role);
-  const purSel = document.getElementById('mn-purpose-type');
-  purSel.innerHTML = options.map(p => `<option value="${p}">${p}</option>`).join('');
-  purSel.value = prefill && options.includes(prefill.purpose_type) ? prefill.purpose_type : options[0];
-  buildCustomSelect(purSel);
-  document.getElementById('mn-purpose-other').value = prefill ? (prefill.purpose_other || '') : '';
-  onPurposeTypeChange();
-
-  // Thành phần tham dự
-  const selectedAttendees = prefill ? String(prefill.attendees || '').split(',').map(s=>s.trim()).filter(Boolean) : [];
-  document.getElementById('mn-attendees-list').innerHTML = ATTENDEE_ROLES.map((role, i) => `
-    <label style="display:flex;align-items:center;gap:8px;margin:${i===0?'0':'10px'} 0 0;font-weight:400;">
-      <input type="checkbox" value="${role}" ${selectedAttendees.includes(role)?'checked':''} class="mn-attendee-cb"> ${role}
-    </label>`).join('');
-
-  // Chi nhánh — chỉ lấy đúng phạm vi vùng được gán cho user này (không lộ toàn bộ database)
-  try {
-    const scope = await api('getMeetingScopeForUser', { username: state.user.username });
-    state.branchesCache = scope.branches;
-
-    const selectedBranches = prefill ? String(prefill.branch_codes || '').split(',').map(s=>s.trim()).filter(Boolean) : [];
-    document.getElementById('mn-branch-list').innerHTML = scope.branches.length
-      ? scope.branches.map((b,i) => `
-        <label style="display:flex;align-items:center;gap:8px;margin:${i===0?'0':'10px'} 0 0;font-weight:400;">
-          <input type="checkbox" value="${b.branch_code}" ${selectedBranches.includes(b.branch_code)?'checked':''} class="mn-branch-cb" onchange="renderGpsPairing()"> ${b.branch_name} <span class="mono" style="color:var(--slate);font-size:11px;">(${b.region_code})</span>
-        </label>`).join('')
-      : '<div class="empty" style="padding:14px;">Chưa có chi nhánh nào trong phạm vi vùng được gán.</div>';
-  } catch (e) {
-    banner('mn-banner','err', e.message);
-  }
-}
-
-function genMeetingCode() {
+function genAcceptanceCode() {
   const d = new Date();
   const ymd = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
   const rand = Math.random().toString(36).slice(2,6).toUpperCase();
-  return `MTG-${ymd}-${rand}`;
+  return `NT-${ymd}-${rand}`;
 }
 
-function onPurposeTypeChange() {
-  const isOther = document.getElementById('mn-purpose-type').value === 'Khác';
-  document.getElementById('mn-purpose-other-field').style.display = isOther ? 'block' : 'none';
+function goAcceptanceNewForm(prefill) {
+  showScreen('screen-acceptance-new');
+  banner('nt-banner','','');
+  state.acceptanceResubmitFrom = prefill ? prefill.acceptance_id : null;
+  state.acceptancePhotoBase64 = null;
+  state.acceptancePhotoThumbBase64 = null;
+  document.getElementById('nt-photo-input').value = '';
+  document.getElementById('nt-photo-filename').innerText = 'Chưa chọn ảnh';
+  document.getElementById('nt-photo-preview').style.display = 'none';
+  document.getElementById('nt-submit-btn').disabled = true;
+  document.getElementById('nt-code').innerText = genAcceptanceCode();
+
+  if (prefill) {
+    banner('nt-banner','info',`Đang tạo lại từ hoạt động bị từ chối <b>${prefill.acceptance_code || prefill.acceptance_id}</b> — thông tin cũ đã được điền sẵn, chị chỉ cần chỉnh sửa phần cần thiết.`);
+  }
+  document.getElementById('nt-activity-name').value = prefill ? (prefill.activity_name || '') : '';
+  document.getElementById('nt-description').value = prefill ? (prefill.description || '') : '';
 }
 
-function haversineMeters(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const toRad = d => d * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function onAcceptancePhotoSelected(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  document.getElementById('nt-photo-filename').innerText = 'Đang xử lý ảnh...';
+  const reader = new FileReader();
+  reader.onload = async () => {
+    let finalSrc = reader.result;
+    try { finalSrc = await compressImage(reader.result, 1000, 0.65); }
+    catch (e) { /* nén lỗi (hiếm) -> vẫn dùng ảnh gốc, không chặn gửi */ }
+    state.acceptancePhotoBase64 = finalSrc;
+    try { state.acceptancePhotoThumbBase64 = await compressImage(reader.result, 120, 0.5); }
+    catch (e) { state.acceptancePhotoThumbBase64 = ''; }
+    const img = document.getElementById('nt-photo-preview');
+    img.src = finalSrc; img.style.display = 'block';
+    document.getElementById('nt-photo-filename').innerText = `Đã chọn: ${file.name}`;
+    checkAcceptanceSubmitReady();
+  };
+  reader.readAsDataURL(file);
 }
 
-// Hiển thị ngay việc GPS "pairing" với đúng (các) chi nhánh đang được chọn —
-// không so với chi nhánh nào khác ngoài danh sách đã tick.
-function renderGpsPairing() {
-  const wrap = document.getElementById('mn-gps-pairing');
-  const checked = Array.from(document.querySelectorAll('.mn-branch-cb:checked')).map(el => el.value);
-  if (!state.meetingGps || !checked.length) { wrap.innerHTML = ''; return; }
-  const rows = checked.map(code => {
-    const br = state.branchesCache.find(b => b.branch_code === code);
-    if (!br || !br.lat || !br.long) return `<div class="row"><div class="l"><div class="t">${br ? br.branch_name : code}</div><div class="s">Chưa có tọa độ chi nhánh</div></div></div>`;
-    const dist = Math.round(haversineMeters(state.meetingGps.lat, state.meetingGps.long, Number(br.lat), Number(br.long)));
-    const valid = dist <= Number(br.radius_m || 150);
-    return `<div class="row"><div class="l"><div class="t">${br.branch_name}</div><div class="s">Cách ${dist}m (cho phép ${br.radius_m}m)</div></div>
-      <div class="r"><span class="badge ${valid?'approved':'rejectedsm'}">${valid?'Hợp lệ':'Ngoài phạm vi'}</span></div></div>`;
-  }).join('');
-  wrap.innerHTML = `<div class="card" style="margin-top:10px;">${rows}</div>`;
+function checkAcceptanceSubmitReady() {
+  const name = document.getElementById('nt-activity-name').value.trim();
+  document.getElementById('nt-submit-btn').disabled = !(name && state.acceptancePhotoBase64);
 }
 
-function captureMeetingGPS() {
-  document.getElementById('mn-gps-hint').innerText = 'Đang lấy vị trí — vui lòng cho phép quyền truy cập vị trí...';
-  requestGeolocation(pos => {
-    state.meetingGps = { lat: pos.coords.latitude, long: pos.coords.longitude, accuracy: pos.coords.accuracy };
-    document.getElementById('mn-gps-dot').classList.add('on');
-    document.getElementById('mn-gps-coords').innerText = `${state.meetingGps.lat.toFixed(6)}, ${state.meetingGps.long.toFixed(6)} (±${Math.round(state.meetingGps.accuracy)}m)`;
-    document.getElementById('mn-gps-hint').innerText = '';
-    document.getElementById('mn-submit-btn').disabled = false;
-    renderGpsPairing();
-  }, err => {
-    document.getElementById('mn-gps-hint').innerText = geoErrorMessage(err);
-  }, () => { document.getElementById('mn-gps-hint').innerText = 'Đang thử lại với độ chính xác thấp hơn để lấy vị trí nhanh hơn...'; });
-}
-
-let isSubmittingMeeting = false;
-async function submitMeetingNow() {
-  if (isSubmittingMeeting) return; // chặn double-tap ngay từ phía client
-  const attendees = Array.from(document.querySelectorAll('.mn-attendee-cb:checked')).map(el => el.value).join(',');
-  const branchCodes = Array.from(document.querySelectorAll('.mn-branch-cb:checked')).map(el => el.value).join(',');
-  const purposeType = document.getElementById('mn-purpose-type').value;
-  const purposeOther = document.getElementById('mn-purpose-other').value.trim();
-
-  if (!state.meetingGps) { document.getElementById('mn-gps-hint').innerText = 'Vui lòng bấm "Bật GPS & lấy vị trí" trước khi gửi.'; return; }
-  if (!branchCodes) { banner('mn-banner','err','Vui lòng chọn ít nhất 1 Chi nhánh.'); return; }
+let isSubmittingAcceptance = false;
+async function submitAcceptanceNow() {
+  if (isSubmittingAcceptance) return; // chặn double-tap ngay từ phía client
+  const activityName = document.getElementById('nt-activity-name').value.trim();
+  if (!activityName) { banner('nt-banner','err','Vui lòng nhập Tên hoạt động.'); return; }
+  if (!state.acceptancePhotoBase64) { banner('nt-banner','err','Vui lòng chọn ảnh chụp màn hình.'); return; }
 
   const payload = {
     creator_username: state.user.username,
-    meeting_code: document.getElementById('mn-code').innerText,
-    branch_codes: branchCodes,
-    meeting_date: document.getElementById('mn-date').value,
-    start_time: document.getElementById('mn-start-time').value,
-    end_time: document.getElementById('mn-end-time').value,
-    purpose_type: purposeType,
-    purpose_other: purposeOther,
-    attendees,
-    gps_lat: state.meetingGps.lat,
-    gps_long: state.meetingGps.long,
-    resubmitted_from: state.resubmitFrom || ''
+    acceptance_code: document.getElementById('nt-code').innerText,
+    activity_name: activityName,
+    description: document.getElementById('nt-description').value.trim(),
+    screenshot_base64: state.acceptancePhotoBase64,
+    screenshot_thumb_base64: state.acceptancePhotoThumbBase64,
+    resubmitted_from: state.acceptanceResubmitFrom || ''
   };
 
-  if (!payload.meeting_date || !payload.start_time || !payload.end_time) {
-    banner('mn-banner','err','Vui lòng nhập đủ Ngày họp, Giờ bắt đầu và Giờ kết thúc.'); return;
-  }
-  if (purposeType === 'Khác' && !purposeOther) { banner('mn-banner','err','Vui lòng nhập nội dung cho mục đích "Khác".'); return; }
-
-  isSubmittingMeeting = true;
-  const submitBtn = document.getElementById('mn-submit-btn');
+  isSubmittingAcceptance = true;
+  const submitBtn = document.getElementById('nt-submit-btn');
   submitBtn.disabled = true;
   const originalLabel = submitBtn.innerText;
   submitBtn.innerHTML = '<span class="loader"></span>Đang gửi...';
 
   try {
-    const result = await api('createMeeting', payload);
-    banner('mn-banner','ok', result.gps_valid
-      ? 'Đã gửi biên bản đi duyệt — vị trí GPS hợp lệ (cách chi nhánh ' + result.gps_distance_m + 'm).'
-      : 'Đã gửi biên bản đi duyệt — lưu ý vị trí GPS ngoài phạm vi chi nhánh (' + result.gps_distance_m + 'm).');
-    state.resubmitFrom = null;
-    setTimeout(() => { switchMeetingTab('history'); showScreen('screen-meeting-home'); }, 900);
+    await api('createAcceptance', payload);
+    banner('nt-banner','ok','Đã gửi nghiệm thu đi duyệt.');
+    state.acceptanceResubmitFrom = null;
+    setTimeout(() => { switchAcceptanceTab('history'); showScreen('screen-acceptance-home'); }, 900);
   } catch (e) {
-    banner('mn-banner','err', e.message);
+    banner('nt-banner','err', e.message);
     submitBtn.disabled = false;
     submitBtn.innerText = originalLabel;
   } finally {
-    isSubmittingMeeting = false;
+    isSubmittingAcceptance = false;
   }
 }
 
-let currentMeetingDetail = null;
-async function openMeetingDetail(id) {
-  showScreen('screen-meeting-detail');
-  const body = document.getElementById('meeting-detail-body');
+let currentAcceptanceDetail = null;
+async function openAcceptanceDetail(id) {
+  showScreen('screen-acceptance-detail');
+  const body = document.getElementById('acceptance-detail-body');
   body.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    const m = await api('getMeetingById', { username: state.user.username, meeting_id: id });
-    currentMeetingDetail = m;
+    const m = await api('getAcceptanceById', { acceptance_id: id });
+    currentAcceptanceDetail = m;
     const canApprove = (state.user.role === 'SM' && m.status === 'PendingSM') || (state.user.role === 'SSM' && m.status === 'PendingSSM');
     const canResubmit = (m.status === 'RejectedSM' || m.status === 'RejectedSSM') && m.creator_username === state.user.username;
     body.innerHTML = `
       <div class="card">
         <span class="badge ${String(m.status).toLowerCase()}">${statusLabel(m.status)}</span>
-        <div class="mono" style="color:var(--slate);font-size:12px;margin-top:8px;">${m.meeting_code || m.meeting_id}</div>
-        <h2 style="margin:4px 0 2px;">${meetingTitle(m)}</h2>
-        <div class="desc" style="margin-bottom:10px;">${m.creator_name || m.creator_username} (${roleLabel(m.creator_role)}) · ${meetingScopeLabel(m)}<br>${fmtDate(m.meeting_date)} · ${m.start_time || '—'}–${m.end_time || '—'}</div>
-        <label style="margin-top:6px;">Thành phần tham dự</label><div>${m.attendees ? m.attendees.split(',').join(', ') : '—'}</div>
-        <label>Vị trí GPS checkin</label>
-        <div>${m.gps_lat ? `<span class="mono">${Number(m.gps_lat).toFixed(6)}, ${Number(m.gps_long).toFixed(6)}</span> — cách chi nhánh ${m.gps_branch_code || 'đã chọn'} khoảng ${m.gps_distance_m}m ${String(m.gps_valid).toUpperCase()==='TRUE' ? '<span class="badge approved">Hợp lệ</span>' : '<span class="badge rejectedsm">Ngoài phạm vi</span>'}` : '—'}</div>
+        <div class="mono" style="color:var(--slate);font-size:12px;margin-top:8px;">${m.acceptance_code || m.acceptance_id}</div>
+        <h2 style="margin:4px 0 2px;">${m.activity_name}</h2>
+        <div class="desc" style="margin-bottom:10px;">${m.creator_name || m.creator_username} (${roleLabel(m.creator_role)}) · ${fmtDate(m.created_at)}</div>
+        ${m.description ? `<label style="margin-top:0;">Mô tả</label><div>${m.description}</div>` : ''}
+        ${m.screenshot_url ? `<label>Ảnh chụp màn hình</label><img class="photo-preview" style="cursor:pointer;" src="${m.screenshot_url}" onclick="openLightbox('${m.screenshot_url.replace(/'/g,"\\'")}')">` : ''}
         ${m.sm_note ? `<label>Ghi chú SM</label><div>${m.sm_note}</div>` : ''}
         ${m.ssm_note ? `<label>Ghi chú SSM</label><div>${m.ssm_note}</div>` : ''}
-        ${m.resubmitted_from ? `<div class="hint" style="margin-top:10px;">Được tạo lại từ meeting <span class="mono">${m.resubmitted_from}</span></div>` : ''}
+        ${m.resubmitted_from ? `<div class="hint" style="margin-top:10px;">Được tạo lại từ nghiệm thu <span class="mono">${m.resubmitted_from}</span></div>` : ''}
       </div>
-      ${canApprove && isGpsInvalid(m) ? `
-      <div class="banner err" style="font-weight:600;">⚠️ Meeting này được tạo bên ngoài vị trí chi nhánh đã chọn (cách khoảng ${m.gps_distance_m}m, vượt bán kính cho phép). Vui lòng xác minh trước khi duyệt.</div>` : ''}
       ${canApprove ? `
       <div class="card">
         <label style="margin-top:0;">Ghi chú duyệt (không bắt buộc)</label>
         <textarea id="approve-note"></textarea>
         <div class="btn-row" style="margin-top:14px;">
-          <button class="btn btn-danger" onclick="doApprove('reject')">Từ chối</button>
-          <button class="btn btn-primary" onclick="doApprove('approve')">Duyệt</button>
+          <button class="btn btn-danger" onclick="doApproveAcceptance('reject')">Từ chối</button>
+          <button class="btn btn-primary" onclick="doApproveAcceptance('approve')">Duyệt</button>
         </div>
       </div>` : ''}
       ${canResubmit ? `
-      <button class="btn btn-amber" onclick="goMeetingNewForm(currentMeetingDetail)">Sửa & gửi lại</button>` : ''}
+      <button class="btn btn-amber" onclick="goAcceptanceNewForm(currentAcceptanceDetail)">Sửa & gửi lại</button>` : ''}
     `;
   } catch (e) {
     body.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
 }
 
-let isApprovingMeeting = false;
-async function doApprove(decision) {
-  if (isApprovingMeeting) return;
-  isApprovingMeeting = true;
+let isApprovingAcceptance = false;
+async function doApproveAcceptance(decision) {
+  if (isApprovingAcceptance) return;
+  isApprovingAcceptance = true;
   const buttons = document.querySelectorAll('.btn-row .btn-danger, .btn-row .btn-primary');
   buttons.forEach(b => b.disabled = true);
   const note = document.getElementById('approve-note') ? document.getElementById('approve-note').value : '';
   try {
-    await api('approveMeeting', {
-      meeting_id: currentMeetingDetail.meeting_id,
-      approver_username: state.user.username,
+    await api('approveAcceptance', {
+      acceptance_id: currentAcceptanceDetail.acceptance_id,
       role: state.user.role,
       decision, note
     });
-    goMeetingHome();
-    switchMeetingTab('approval');
+    goAcceptanceHome();
+    switchAcceptanceTab('approval');
   } catch (e) {
     alert(e.message);
     buttons.forEach(b => b.disabled = false);
   } finally {
-    isApprovingMeeting = false;
+    isApprovingAcceptance = false;
   }
 }
 
@@ -1768,7 +1643,7 @@ async function toggleAccountActive(username, active) {
 }
 
 async function deleteAccount(username) {
-  if (!confirm(`Xóa vĩnh viễn tài khoản @${username}? Lịch sử checkin/meeting liên quan sẽ vẫn giữ nguyên nhưng không còn tài khoản để đăng nhập.`)) return;
+  if (!confirm(`Xóa vĩnh viễn tài khoản @${username}? Lịch sử checkin/nghiệm thu liên quan sẽ vẫn giữ nguyên nhưng không còn tài khoản để đăng nhập.`)) return;
   try { await api('adminDeleteAccount', { username }); renderAdminAccounts(); }
   catch (e) { alert(e.message); }
 }
@@ -1791,7 +1666,6 @@ async function renderAdminRegions(editCode) {
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     [rgCache, rgCacheAccounts] = await Promise.all([api('adminListRegions'), api('adminListAccounts')]);
-    state.regionsCache = rgCache;
     renderRegionsView();
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
 }
@@ -1914,7 +1788,7 @@ function renderBranchesView() {
         <label>Latitude</label><input id="br-lat" type="number" step="0.000001" placeholder="vd: 10.8030065" value="${editing ? editing.lat : ''}">
         <label>Longitude</label><input id="br-long" type="number" step="0.000001" placeholder="vd: 106.7767749" value="${editing ? editing.long : ''}">
         <label>Bán kính GPS checkin cho phép (m)</label><input id="br-radius" type="number" value="${editing ? editing.radius_m : 150}">
-        <div class="hint">Tọa độ này dùng để xác thực vị trí GPS khi SA/SM tạo Meeting tại chi nhánh (không dùng cho Sitetour).</div>
+        <div class="hint">Tọa độ chi nhánh — dùng để xác thực vị trí GPS cho các hoạt động gắn với chi nhánh này.</div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveBranch(event)">${editing ? 'Cập nhật chi nhánh' : 'Tạo chi nhánh'}</button>
           <button class="btn btn-outline" onclick="brShowList()">Hủy</button>
@@ -1974,7 +1848,7 @@ async function saveBranch(evt) {
     radius_m: document.getElementById('br-radius').value || 150,
   };
   if (!payload.branch_name || !payload.region_code) { banner('br-banner','err','Nhập Tên chi nhánh và chọn Vùng.'); return; }
-  if (!payload.lat || !payload.long) { banner('br-banner','err','Nhập Latitude và Longitude để phục vụ GPS checkin khi tạo Meeting.'); return; }
+  if (!payload.lat || !payload.long) { banner('br-banner','err','Nhập Latitude và Longitude để phục vụ xác thực vị trí GPS.'); return; }
   if (btn) btn.disabled = true;
   try {
     if (editing) { await api('adminUpdateBranch', payload); banner('br-banner','ok','Đã cập nhật chi nhánh.'); }
@@ -1986,7 +1860,7 @@ async function saveBranch(evt) {
 }
 
 async function deleteBranch(branch_code) {
-  if (!confirm(`Xóa chi nhánh ${branch_code}? Các meeting đã gán chi nhánh này vẫn giữ dữ liệu cũ nhưng sẽ không còn chọn được chi nhánh này khi tạo mới.`)) return;
+  if (!confirm(`Xóa chi nhánh ${branch_code}? Dữ liệu cũ liên quan vẫn giữ nguyên nhưng sẽ không còn chọn được chi nhánh này khi tạo mới.`)) return;
   try { await api('adminDeleteBranch', { branch_code }); renderAdminBranchesTab(); }
   catch (e) { alert(e.message); }
 }

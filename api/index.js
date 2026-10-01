@@ -225,56 +225,32 @@ ACTIONS.listCheckins = async (pool, data) => {
   return rows;
 };
 
-ACTIONS.getMeetingScopeForUser = async (pool, data) => {
-  const { rows: accRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [data.username]);
-  const acc = accRows[0];
-  if (!acc) throw new Error('Không tìm thấy tài khoản.');
-  let regionCodes = String(acc.region_codes || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (acc.role === 'SA' && !regionCodes.length) {
-    const { rows: mgrRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [acc.manager_username]);
-    if (mgrRows[0]) regionCodes = String(mgrRows[0].region_codes || '').split(',').map(s => s.trim()).filter(Boolean);
-  }
-  const { rows: branches } = await pool.query('SELECT * FROM branches ORDER BY branch_code');
-  const scoped = acc.role === 'Admin' ? branches : branches.filter(b => regionCodes.includes(b.region_code));
-  return { branches: scoped };
-};
+// Danh sách chỉ trả về thumbnail nhỏ (không kéo screenshot full, vài MB/bản
+// ghi) -> getAcceptanceById mới trả ảnh đầy đủ cho trang chi tiết.
+const ACCEPTANCE_LIST_COLUMNS = `acceptance_id, acceptance_code, creator_username, creator_name, creator_role, activity_name, description, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at`;
 
-ACTIONS.createMeeting = async (pool, data) => {
+ACTIONS.createAcceptance = async (pool, data) => {
   const { rows: accRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [data.creator_username]);
   const acc = accRows[0];
   if (!acc) throw new Error('Không tìm thấy tài khoản.');
-  const { rows: branches } = await pool.query('SELECT * FROM branches');
-  const branchCodes = String(data.branch_codes || '').split(',').map(s => s.trim()).filter(Boolean);
-  let bestDist = null, bestBranch = '', allValid = branchCodes.length > 0;
-  branchCodes.forEach(code => {
-    const br = branches.find(b => b.branch_code === code);
-    if (br && br.lat && br.long) {
-      const d = Math.round(haversine(data.gps_lat, data.gps_long, Number(br.lat), Number(br.long)));
-      if (bestDist === null || d < bestDist) { bestDist = d; bestBranch = br.branch_code; }
-      if (d > Number(br.radius_m || 150)) allValid = false;
-    } else {
-      allValid = false;
-    }
-  });
+  if (!data.activity_name) throw new Error('Thiếu tên hoạt động.');
   const status = acc.role === 'SM' ? 'PendingSSM' : 'PendingSM';
-  const meetingId = require('crypto').randomUUID();
+  const acceptanceId = require('crypto').randomUUID();
   await pool.query(
-    `INSERT INTO meetings (meeting_id, meeting_code, creator_username, creator_name, creator_role, branch_codes,
-       meeting_date, start_time, end_time, purpose_type, purpose_other, attendees,
-       gps_lat, gps_long, gps_branch_code, gps_distance_m, gps_valid, status, sm_note, ssm_note, resubmitted_from, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'','', $19, now())`,
-    [meetingId, data.meeting_code || '', acc.username, acc.full_name, acc.role, data.branch_codes || '',
-     data.meeting_date || '', data.start_time || '', data.end_time || '', data.purpose_type || '', data.purpose_other || '', data.attendees || '',
-     data.gps_lat, data.gps_long, bestBranch, bestDist, allValid, status, data.resubmitted_from || '']
+    `INSERT INTO acceptances (acceptance_id, acceptance_code, creator_username, creator_name, creator_role,
+       activity_name, description, screenshot_url, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'','', $11, now())`,
+    [acceptanceId, data.acceptance_code || '', acc.username, acc.full_name, acc.role,
+     data.activity_name, data.description || '', data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.resubmitted_from || '']
   );
-  return { meeting_id: meetingId, gps_valid: allValid, gps_distance_m: bestDist === null ? 0 : bestDist };
+  return { acceptance_id: acceptanceId };
 };
 
-ACTIONS.listMeetingsForApproval = async (pool, data) => {
+ACTIONS.listAcceptancesForApproval = async (pool, data) => {
   const { rows: accounts } = await pool.query('SELECT * FROM accounts');
-  const { rows: meetings } = await pool.query('SELECT * FROM meetings ORDER BY created_at DESC');
+  const { rows: items } = await pool.query(`SELECT ${ACCEPTANCE_LIST_COLUMNS} FROM acceptances ORDER BY created_at DESC`);
   const directReports = new Set(accounts.filter(a => a.manager_username === data.username).map(a => a.username));
-  return meetings.filter(m => {
+  return items.filter(m => {
     if (m.status === 'PendingSM') return directReports.has(m.creator_username);
     if (m.status === 'PendingSSM') {
       const creator = accounts.find(a => a.username === m.creator_username);
@@ -287,31 +263,31 @@ ACTIONS.listMeetingsForApproval = async (pool, data) => {
   });
 };
 
-ACTIONS.listMeetings = async (pool, data) => {
-  const { rows: meetings } = await pool.query('SELECT * FROM meetings ORDER BY created_at DESC');
-  if (data.role === 'Admin') return meetings;
+ACTIONS.listAcceptances = async (pool, data) => {
+  const { rows: items } = await pool.query(`SELECT ${ACCEPTANCE_LIST_COLUMNS} FROM acceptances ORDER BY created_at DESC`);
+  if (data.role === 'Admin') return items;
   const subtree = await orgSubtreeUsernames(pool, data.username);
-  return meetings.filter(m => subtree.has(m.creator_username));
+  return items.filter(m => subtree.has(m.creator_username));
 };
 
-ACTIONS.getMeetingById = async (pool, data) => {
-  const { rows } = await pool.query('SELECT * FROM meetings WHERE meeting_id=$1', [data.meeting_id]);
-  if (!rows[0]) throw new Error('Không tìm thấy meeting.');
+ACTIONS.getAcceptanceById = async (pool, data) => {
+  const { rows } = await pool.query('SELECT * FROM acceptances WHERE acceptance_id=$1', [data.acceptance_id]);
+  if (!rows[0]) throw new Error('Không tìm thấy hoạt động nghiệm thu.');
   return rows[0];
 };
 
-ACTIONS.approveMeeting = async (pool, data) => {
-  const { rows } = await pool.query('SELECT * FROM meetings WHERE meeting_id=$1', [data.meeting_id]);
+ACTIONS.approveAcceptance = async (pool, data) => {
+  const { rows } = await pool.query('SELECT * FROM acceptances WHERE acceptance_id=$1', [data.acceptance_id]);
   const m = rows[0];
-  if (!m) throw new Error('Không tìm thấy meeting.');
+  if (!m) throw new Error('Không tìm thấy hoạt động nghiệm thu.');
   if (data.role === 'SM') {
-    if (m.status !== 'PendingSM') throw new Error('Meeting không ở trạng thái chờ SM duyệt.');
-    await pool.query('UPDATE meetings SET status=$2, sm_note=$3 WHERE meeting_id=$1',
-      [data.meeting_id, data.decision === 'approve' ? 'PendingSSM' : 'RejectedSM', data.note || '']);
+    if (m.status !== 'PendingSM') throw new Error('Hoạt động không ở trạng thái chờ SM duyệt.');
+    await pool.query('UPDATE acceptances SET status=$2, sm_note=$3 WHERE acceptance_id=$1',
+      [data.acceptance_id, data.decision === 'approve' ? 'PendingSSM' : 'RejectedSM', data.note || '']);
   } else if (data.role === 'SSM') {
-    if (m.status !== 'PendingSSM') throw new Error('Meeting không ở trạng thái chờ SSM duyệt.');
-    await pool.query('UPDATE meetings SET status=$2, ssm_note=$3 WHERE meeting_id=$1',
-      [data.meeting_id, data.decision === 'approve' ? 'Approved' : 'RejectedSSM', data.note || '']);
+    if (m.status !== 'PendingSSM') throw new Error('Hoạt động không ở trạng thái chờ SSM duyệt.');
+    await pool.query('UPDATE acceptances SET status=$2, ssm_note=$3 WHERE acceptance_id=$1',
+      [data.acceptance_id, data.decision === 'approve' ? 'Approved' : 'RejectedSSM', data.note || '']);
   } else {
     throw new Error('Vai trò không có quyền duyệt.');
   }

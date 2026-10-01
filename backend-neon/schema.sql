@@ -48,24 +48,16 @@ CREATE TABLE IF NOT EXISTS checkins (
   timestamp         timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS meetings (
-  meeting_id          text PRIMARY KEY,
-  meeting_code        text NOT NULL DEFAULT '',
+CREATE TABLE IF NOT EXISTS acceptances (
+  acceptance_id       text PRIMARY KEY,
+  acceptance_code     text NOT NULL DEFAULT '',
   creator_username    text NOT NULL,
   creator_name        text NOT NULL DEFAULT '',
   creator_role        text NOT NULL DEFAULT '',
-  branch_codes        text NOT NULL DEFAULT '',
-  meeting_date        text NOT NULL DEFAULT '',
-  start_time          text NOT NULL DEFAULT '',
-  end_time            text NOT NULL DEFAULT '',
-  purpose_type        text NOT NULL DEFAULT '',
-  purpose_other       text NOT NULL DEFAULT '',
-  attendees           text NOT NULL DEFAULT '',
-  gps_lat             double precision,
-  gps_long            double precision,
-  gps_branch_code     text NOT NULL DEFAULT '',
-  gps_distance_m      integer,
-  gps_valid           boolean NOT NULL DEFAULT false,
+  activity_name       text NOT NULL,
+  description         text NOT NULL DEFAULT '',
+  screenshot_url      text NOT NULL DEFAULT '',
+  screenshot_thumb    text NOT NULL DEFAULT '',
   status              text NOT NULL DEFAULT 'PendingSM',
   sm_note             text NOT NULL DEFAULT '',
   ssm_note            text NOT NULL DEFAULT '',
@@ -74,8 +66,8 @@ CREATE TABLE IF NOT EXISTS meetings (
 );
 
 CREATE INDEX IF NOT EXISTS idx_checkins_username ON checkins(username);
-CREATE INDEX IF NOT EXISTS idx_meetings_creator ON meetings(creator_username);
-CREATE INDEX IF NOT EXISTS idx_meetings_status ON meetings(status);
+CREATE INDEX IF NOT EXISTS idx_acceptances_creator ON acceptances(creator_username);
+CREATE INDEX IF NOT EXISTS idx_acceptances_status ON acceptances(status);
 CREATE INDEX IF NOT EXISTS idx_accounts_manager ON accounts(manager_username);
 
 INSERT INTO accounts (username, password, full_name, role, manager_username, region_codes, active)
