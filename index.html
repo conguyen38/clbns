@@ -448,15 +448,20 @@
           <label>Bán kính cho phép (m)</label><input id="sta-radius" type="number" value="100">
           <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
         </div>
+        <label>Thời gian diễn ra hoạt động</label>
+        <div class="btn-row" style="margin-top:0;">
+          <div style="flex:1;"><input id="sta-event-start" type="date"></div>
+          <div style="flex:1;"><input id="sta-event-end" type="date"></div>
+        </div>
         <label>Khung giờ Check in (bấm ngoài khung này sẽ bị tính Ngoài giờ)</label>
         <div class="btn-row" style="margin-top:0;">
-          <div style="flex:1;"><input id="sta-checkin-start" type="datetime-local"></div>
-          <div style="flex:1;"><input id="sta-checkin-end" type="datetime-local"></div>
+          <div style="flex:1;"><input id="sta-checkin-start" type="time"></div>
+          <div style="flex:1;"><input id="sta-checkin-end" type="time"></div>
         </div>
         <label>Khung giờ Check out</label>
         <div class="btn-row" style="margin-top:0;">
-          <div style="flex:1;"><input id="sta-checkout-start" type="datetime-local"></div>
-          <div style="flex:1;"><input id="sta-checkout-end" type="datetime-local"></div>
+          <div style="flex:1;"><input id="sta-checkout-start" type="time"></div>
+          <div style="flex:1;"><input id="sta-checkout-end" type="time"></div>
         </div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" id="sta-submit-btn" onclick="saveSitetourActivity(event)">Tạo hoạt động</button>
@@ -998,10 +1003,12 @@ function goSitetourCreateActivity(editId) {
   document.getElementById('sta-lat').value = editing && editing.lat != null ? editing.lat : '';
   document.getElementById('sta-long').value = editing && editing.long != null ? editing.long : '';
   document.getElementById('sta-radius').value = editing ? editing.radius_m : 100;
-  document.getElementById('sta-checkin-start').value = editing ? fmtDatetimeLocal(editing.checkin_start) : '';
-  document.getElementById('sta-checkin-end').value = editing ? fmtDatetimeLocal(editing.checkin_end) : '';
-  document.getElementById('sta-checkout-start').value = editing ? fmtDatetimeLocal(editing.checkout_start) : '';
-  document.getElementById('sta-checkout-end').value = editing ? fmtDatetimeLocal(editing.checkout_end) : '';
+  document.getElementById('sta-event-start').value = editing ? (editing.event_start || '') : '';
+  document.getElementById('sta-event-end').value = editing ? (editing.event_end || '') : '';
+  document.getElementById('sta-checkin-start').value = editing ? fmtTimeInput(editing.checkin_start) : '';
+  document.getElementById('sta-checkin-end').value = editing ? fmtTimeInput(editing.checkin_end) : '';
+  document.getElementById('sta-checkout-start').value = editing ? fmtTimeInput(editing.checkout_start) : '';
+  document.getElementById('sta-checkout-end').value = editing ? fmtTimeInput(editing.checkout_end) : '';
   banner('sta-banner', '', '');
   showScreen('screen-sitetour-create');
   buildCustomSelect(document.getElementById('sta-type'));
@@ -1025,6 +1032,8 @@ async function saveSitetourActivity(evt) {
     lat: isOffline ? document.getElementById('sta-lat').value : null,
     long: isOffline ? document.getElementById('sta-long').value : null,
     radius_m: isOffline ? (document.getElementById('sta-radius').value || 100) : 0,
+    event_start: document.getElementById('sta-event-start').value,
+    event_end: document.getElementById('sta-event-end').value,
     checkin_start: document.getElementById('sta-checkin-start').value,
     checkin_end: document.getElementById('sta-checkin-end').value,
     checkout_start: document.getElementById('sta-checkout-start').value,
@@ -1032,6 +1041,7 @@ async function saveSitetourActivity(evt) {
   };
   if (!payload.checkpoint_name) { banner('sta-banner','err','Nhập Tên hoạt động.'); return; }
   if (isOffline && (!payload.lat || !payload.long)) { banner('sta-banner','err','Hoạt động offline cần Latitude và Longitude.'); return; }
+  if (!payload.event_start || !payload.event_end) { banner('sta-banner','err','Nhập đủ thời gian diễn ra hoạt động.'); return; }
   if (!payload.checkin_start || !payload.checkin_end) { banner('sta-banner','err','Nhập đủ khung giờ Check in.'); return; }
   if (!payload.checkout_start || !payload.checkout_end) { banner('sta-banner','err','Nhập đủ khung giờ Check out.'); return; }
   if (btn) btn.disabled = true;
@@ -2060,15 +2070,20 @@ function renderCheckpointsView() {
           <label>Bán kính cho phép (m)</label><input id="cp-radius" type="number" value="${editing ? editing.radius_m : 100}">
           <div class="hint">Mẹo: mở Google Maps, giữ ghim tại điểm cần checkin để lấy tọa độ chính xác.</div>
         </div>
+        <label>Thời gian diễn ra hoạt động</label>
+        <div class="btn-row" style="margin-top:0;">
+          <div style="flex:1;"><input id="cp-event-start" type="date" value="${editing ? (editing.event_start || '') : ''}"></div>
+          <div style="flex:1;"><input id="cp-event-end" type="date" value="${editing ? (editing.event_end || '') : ''}"></div>
+        </div>
         <label>Khung giờ Check in (bấm ngoài khung này sẽ bị tính Ngoài giờ)</label>
         <div class="btn-row" style="margin-top:0;">
-          <div style="flex:1;"><input id="cp-checkin-start" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkin_start) : ''}"></div>
-          <div style="flex:1;"><input id="cp-checkin-end" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkin_end) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkin-start" type="time" value="${editing ? fmtTimeInput(editing.checkin_start) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkin-end" type="time" value="${editing ? fmtTimeInput(editing.checkin_end) : ''}"></div>
         </div>
         <label>Khung giờ Check out</label>
         <div class="btn-row" style="margin-top:0;">
-          <div style="flex:1;"><input id="cp-checkout-start" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkout_start) : ''}"></div>
-          <div style="flex:1;"><input id="cp-checkout-end" type="datetime-local" value="${editing ? fmtDatetimeLocal(editing.checkout_end) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkout-start" type="time" value="${editing ? fmtTimeInput(editing.checkout_start) : ''}"></div>
+          <div style="flex:1;"><input id="cp-checkout-end" type="time" value="${editing ? fmtTimeInput(editing.checkout_end) : ''}"></div>
         </div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveCheckpoint(event)">${editing ? 'Cập nhật hoạt động' : 'Tạo hoạt động'}</button>
@@ -2092,7 +2107,7 @@ function renderCheckpointsView() {
     <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
     <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>`;
   const typeBadge = c => `<span class="badge ${c.activity_type==='online'?'approved':'pendingsm'}">${c.activity_type==='online'?'Online':'Offline'}</span>`;
-  const windowsText = c => `Check in: ${fmtDate(c.checkin_start)} – ${fmtDate(c.checkin_end)} · Check out: ${fmtDate(c.checkout_start)} – ${fmtDate(c.checkout_end)}`;
+  const windowsText = c => `Diễn ra: ${fmtDateOnly(c.event_start)} – ${fmtDateOnly(c.event_end)} · Check in: ${fmtTimeDisplay(c.checkin_start)}–${fmtTimeDisplay(c.checkin_end)} · Check out: ${fmtTimeDisplay(c.checkout_start)}–${fmtTimeDisplay(c.checkout_end)}`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + cpPageInfo.pageRows.map(c => `
       <div class="row">
@@ -2116,15 +2131,15 @@ function toggleActivityTypeFields() {
   document.getElementById('cp-offline-fields').style.display = isOffline ? 'block' : 'none';
 }
 
-// datetime-local input cần "YYYY-MM-DDTHH:mm" theo giờ local của trình duyệt,
-// khác định dạng ISO UTC server trả về.
-function fmtDatetimeLocal(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d)) return '';
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+// event_start/event_end là chuỗi "YYYY-MM-DD" thuần (không giờ/timezone) -> dùng thẳng
+// cho input type=date. checkin/checkout_* là chuỗi "HH:MM:SS" -> cắt còn "HH:MM" cho input type=time.
+function fmtTimeInput(t) { return t ? t.slice(0, 5) : ''; }
+function fmtDateOnly(d) {
+  if (!d) return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : d;
 }
+function fmtTimeDisplay(t) { return t ? t.slice(0, 5) : '—'; }
 
 async function saveCheckpoint(evt) {
   const btn = evt ? evt.currentTarget : null;
@@ -2139,6 +2154,8 @@ async function saveCheckpoint(evt) {
     lat: isOffline ? document.getElementById('cp-lat').value : null,
     long: isOffline ? document.getElementById('cp-long').value : null,
     radius_m: isOffline ? (document.getElementById('cp-radius').value || 100) : 0,
+    event_start: document.getElementById('cp-event-start').value,
+    event_end: document.getElementById('cp-event-end').value,
     checkin_start: document.getElementById('cp-checkin-start').value,
     checkin_end: document.getElementById('cp-checkin-end').value,
     checkout_start: document.getElementById('cp-checkout-start').value,
@@ -2146,6 +2163,7 @@ async function saveCheckpoint(evt) {
   };
   if (!payload.checkpoint_name) { banner('cp-banner','err','Nhập Tên hoạt động.'); return; }
   if (isOffline && (!payload.lat || !payload.long)) { banner('cp-banner','err','Hoạt động offline cần Latitude và Longitude.'); return; }
+  if (!payload.event_start || !payload.event_end) { banner('cp-banner','err','Nhập đủ thời gian diễn ra hoạt động.'); return; }
   if (!payload.checkin_start || !payload.checkin_end) { banner('cp-banner','err','Nhập đủ khung giờ Check in.'); return; }
   if (!payload.checkout_start || !payload.checkout_end) { banner('cp-banner','err','Nhập đủ khung giờ Check out.'); return; }
   if (btn) btn.disabled = true;

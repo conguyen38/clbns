@@ -8,6 +8,24 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+const CHECKPOINT_COLUMNS = `checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m,
+  event_start::text AS event_start, event_end::text AS event_end,
+  checkin_start, checkin_end, checkout_start, checkout_end`;
+
+// Giờ Việt Nam (UTC+7, không có DST) dùng để so khung giờ check in/out trong ngày,
+// tính độc lập với timezone máy chủ chạy Node.
+function nowVNParts() {
+  const vn = new Date(Date.now() + 7 * 3600 * 1000);
+  return { dateStr: vn.toISOString().slice(0, 10), timeStr: vn.toISOString().slice(11, 16) };
+}
+
+function timeInWindow(timeStr, startStr, endStr) {
+  if (!startStr || !endStr) return true;
+  const s = startStr.slice(0, 5), e = endStr.slice(0, 5);
+  if (s <= e) return timeStr >= s && timeStr <= e;
+  return timeStr >= s || timeStr <= e; // khung giờ qua đêm (vd 22:00 -> 02:00)
+}
+
 async function orgSubtreeUsernames(pool, username) {
   const { rows } = await pool.query('SELECT username, manager_username FROM accounts');
   const set = new Set([username]);
@@ -145,7 +163,7 @@ ACTIONS.adminDeleteBranch = async (pool, data) => {
 };
 
 ACTIONS.adminListCheckpoints = async (pool) => {
-  const { rows } = await pool.query('SELECT * FROM checkpoints ORDER BY checkpoint_name');
+  const { rows } = await pool.query(`SELECT ${CHECKPOINT_COLUMNS} FROM checkpoints ORDER BY checkpoint_name`);
   return rows;
 };
 
@@ -154,21 +172,22 @@ ACTIONS.adminCreateCheckpoint = async (pool, data) => {
   if (!checkpoint_name) throw new Error('Thiếu tên hoạt động.');
   const isOffline = activity_type !== 'online';
   if (isOffline && (!data.lat || !data.long)) throw new Error('Hoạt động offline cần Latitude/Longitude.');
+  if (!data.event_start || !data.event_end) throw new Error('Thiếu thời gian diễn ra hoạt động.');
   if (!data.checkin_start || !data.checkin_end) throw new Error('Thiếu khung giờ Check in.');
   if (!data.checkout_start || !data.checkout_end) throw new Error('Thiếu khung giờ Check out.');
   const id = require('crypto').randomUUID();
   await pool.query(
-    `INSERT INTO checkpoints (checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m, checkin_start, checkin_end, checkout_start, checkout_end)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    `INSERT INTO checkpoints (checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m, event_start, event_end, checkin_start, checkin_end, checkout_start, checkout_end)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
     [id, checkpoint_name, isOffline ? (data.address || '') : '', isOffline ? 'offline' : 'online',
      isOffline ? Number(data.lat) : null, isOffline ? Number(data.long) : null, isOffline ? (Number(data.radius_m) || 100) : 0,
-     data.checkin_start, data.checkin_end, data.checkout_start, data.checkout_end]
+     data.event_start, data.event_end, data.checkin_start, data.checkin_end, data.checkout_start, data.checkout_end]
   );
   return { ok: true };
 };
 
 ACTIONS.adminUpdateCheckpoint = async (pool, data) => {
-  const fields = ['checkpoint_name', 'address', 'activity_type', 'lat', 'long', 'radius_m', 'checkin_start', 'checkin_end', 'checkout_start', 'checkout_end']
+  const fields = ['checkpoint_name', 'address', 'activity_type', 'lat', 'long', 'radius_m', 'event_start', 'event_end', 'checkin_start', 'checkin_end', 'checkout_start', 'checkout_end']
     .filter(f => data[f] !== undefined);
   if (!fields.length) return { ok: true };
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
@@ -185,7 +204,7 @@ ACTIONS.adminDeleteCheckpoint = async (pool, data) => {
 };
 
 ACTIONS.getCheckpointsForUser = async (pool) => {
-  const { rows } = await pool.query('SELECT * FROM checkpoints ORDER BY checkpoint_name');
+  const { rows } = await pool.query(`SELECT ${CHECKPOINT_COLUMNS} FROM checkpoints ORDER BY checkpoint_name`);
   return rows;
 };
 
@@ -205,14 +224,15 @@ ACTIONS.getActivityCheckStatus = async (pool, data) => {
 
 ACTIONS.submitActivityLog = async (pool, data) => {
   const { username, full_name, checkpoint_id, action_type, lat, long, photo_base64, photo_thumb_base64, checkin_id } = data;
-  const { rows } = await pool.query('SELECT * FROM checkpoints WHERE checkpoint_id=$1', [checkpoint_id]);
+  const { rows } = await pool.query(`SELECT ${CHECKPOINT_COLUMNS} FROM checkpoints WHERE checkpoint_id=$1`, [checkpoint_id]);
   const cp = rows[0];
   if (!cp) throw new Error('Không tìm thấy hoạt động.');
   const isOffline = cp.activity_type === 'offline';
   const windowStart = action_type === 'checkout' ? cp.checkout_start : cp.checkin_start;
   const windowEnd = action_type === 'checkout' ? cp.checkout_end : cp.checkin_end;
-  const now = new Date();
-  const timeValid = (!windowStart || now >= new Date(windowStart)) && (!windowEnd || now <= new Date(windowEnd));
+  const { dateStr, timeStr } = nowVNParts();
+  const dateValid = (!cp.event_start || dateStr >= cp.event_start) && (!cp.event_end || dateStr <= cp.event_end);
+  const timeValid = dateValid && timeInWindow(timeStr, windowStart, windowEnd);
 
   let dist = null, gpsValid = true;
   if (isOffline) {

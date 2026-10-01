@@ -33,10 +33,12 @@ CREATE TABLE IF NOT EXISTS checkpoints (
   lat               double precision,
   long              double precision,
   radius_m          integer NOT NULL DEFAULT 100,
-  checkin_start     timestamptz,
-  checkin_end       timestamptz,
-  checkout_start    timestamptz,
-  checkout_end      timestamptz
+  event_start       date, -- ngày bắt đầu hoạt động diễn ra
+  event_end         date, -- ngày kết thúc hoạt động diễn ra
+  checkin_start     time, -- khung giờ check in trong ngày (không có date)
+  checkin_end       time,
+  checkout_start    time, -- khung giờ check out trong ngày
+  checkout_end      time
 );
 
 -- Mỗi dòng là 1 lần check in HOẶC check out (action_type) của 1 user với 1 hoạt động.
