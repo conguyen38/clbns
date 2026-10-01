@@ -535,12 +535,22 @@
     <div class="topbar">
       <button class="back" onclick="goHome()">‹</button>
       <div class="brand"><span class="name">NGHIỆM THU</span><span class="sub">Hoạt động & bằng chứng</span></div>
-      <span></span>
+      <button class="topbar-chip" onclick="goAcceptanceHistory()">🕐 Lịch sử</button>
     </div>
     <div style="padding-top:18px;">
       <div class="tabs" id="acceptance-tabs"></div>
       <div id="acceptance-tab-content"></div>
     </div>
+  </div>
+
+  <!-- ===================== ACCEPTANCE: history ===================== -->
+  <div class="screen" id="screen-acceptance-history">
+    <div class="topbar">
+      <button class="back" onclick="goAcceptanceHome()">‹</button>
+      <div class="brand"><span class="name">LỊCH SỬ</span><span class="sub">Nghiệm thu đã gửi</span></div>
+      <span></span>
+    </div>
+    <div style="padding-top:18px;" id="acceptance-history-list"></div>
   </div>
 
   <!-- ===================== REPORT ===================== -->
@@ -847,7 +857,7 @@ function statusLabel(s) {
 const SIDEBAR_NAV_MAP = {
   'screen-home': 'home',
   'screen-sitetour-list': 'sitetour', 'screen-sitetour-create': 'sitetour', 'screen-sitetour-checkin': 'sitetour', 'screen-sitetour-result': 'sitetour', 'screen-sitetour-history': 'sitetour',
-  'screen-acceptance-home': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-activity-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
+  'screen-acceptance-home': 'acceptance', 'screen-acceptance-history': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-activity-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
   'screen-report': 'report',
   'screen-admin': 'admin',
 };
@@ -1406,7 +1416,6 @@ function goAcceptanceHome() {
   const tabs = [];
   if (isCreator) tabs.push({k:'new', label:'Hoạt động'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
-  tabs.push({k:'history', label:'Lịch sử duyệt'});
   state.acceptanceTab = tabs[0].k;
   document.getElementById('acceptance-tabs').innerHTML = tabs.map(t =>
     `<div class="tab ${t.k===state.acceptanceTab?'active':''}" data-tab="${t.k}" onclick="switchAcceptanceTab('${t.k}')">${t.label}</div>`).join('');
@@ -1423,11 +1432,13 @@ function switchAcceptanceTab(k) {
 let acceptanceRowsCache = [];
 let acceptanceRowsPage = 1;
 let acceptanceRowsIsApproval = false;
+let acceptanceRowsContainerId = 'acceptance-tab-content';
 let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
 let acceptanceActivitiesCache = [];
 
 async function renderAcceptanceTab() {
   const wrap = document.getElementById('acceptance-tab-content');
+  acceptanceRowsContainerId = 'acceptance-tab-content';
   if (state.acceptanceTab === 'new') {
     renderAcceptanceActivities();
     return;
@@ -1443,6 +1454,22 @@ async function renderAcceptanceTab() {
       acceptanceRowsCache.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
       acceptanceRowsIsApproval = false;
     }
+    renderAcceptanceRows();
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+async function goAcceptanceHistory() {
+  acceptanceRowsContainerId = 'acceptance-history-list';
+  acceptanceRowsPage = 1;
+  showScreen('screen-acceptance-history');
+  const wrap = document.getElementById(acceptanceRowsContainerId);
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
+  try {
+    acceptanceRowsCache = await api('listAcceptances', { username: state.user.username, role: state.user.role });
+    acceptanceRowsCache.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    acceptanceRowsIsApproval = false;
     renderAcceptanceRows();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
@@ -1534,7 +1561,7 @@ async function renderAcceptanceReport() {
 function acceptanceRowsSetPage(p) { acceptanceRowsPage = p; renderAcceptanceRows(); }
 
 function renderAcceptanceRows() {
-  const wrap = document.getElementById('acceptance-tab-content');
+  const wrap = document.getElementById(acceptanceRowsContainerId);
   const rows = acceptanceRowsCache;
   if (!rows.length) { wrap.innerHTML = `<div class="empty"><div class="big">📭</div>${acceptanceRowsIsApproval?'Không có hoạt động nào chờ duyệt.':'Chưa có hoạt động nào.'}</div>`; return; }
   const { pageRows, page, totalPages, total } = sliceForPage(rows, acceptanceRowsPage);
@@ -1634,7 +1661,7 @@ async function submitAcceptanceNow() {
     await api('createAcceptance', payload);
     banner('nt-banner','ok','Đã gửi nghiệm thu đi duyệt.');
     state.acceptanceResubmitFrom = null;
-    setTimeout(() => { switchAcceptanceTab('history'); showScreen('screen-acceptance-home'); }, 900);
+    setTimeout(goAcceptanceHistory, 900);
   } catch (e) {
     banner('nt-banner','err', e.message);
     submitBtn.disabled = false;
