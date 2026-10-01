@@ -111,14 +111,14 @@
   }
 
   /* Top bar */
-  .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);margin:-20px -18px 0;}
-  .topbar .brand{display:flex;flex-direction:column;line-height:1;}
+  .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:flex-start;box-shadow:var(--shadow);margin:-20px -18px 0;}
+  .topbar .brand{display:flex;flex-direction:column;line-height:1;margin-left:10px;}
   .topbar .brand .name{font-family:'Roboto',sans-serif;font-weight:900;font-size:19px;letter-spacing:0.03em;}
   .topbar .brand .sub{font-size:10px;color:var(--slate-light);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
   .topbar button.back{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 8px 0 0;}
-  .topbar-chip{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12.5px;font-weight:600;border-radius:100px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+  .topbar-chip{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12.5px;font-weight:600;border-radius:100px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-left:auto;}
   .topbar-chip:hover{background:rgba(255,255,255,0.2);}
-  .topbar .userchip{font-size:12px;color:var(--slate-light);text-align:right;}
+  .topbar .userchip{font-size:12px;color:var(--slate-light);text-align:right;margin-left:auto;}
   .topbar .userchip b{color:#fff;display:block;font-size:13px;}
 
   /* Typography helpers */
@@ -229,7 +229,7 @@
   /* Divider goes on top of a following .row (not bottom of the previous one)
      so it never dangles when something non-.row (e.g. a pager) comes after
      the last row — only an actual next .row sibling draws the line. */
-  .row{display:flex;justify-content:space-between;align-items:flex-start;padding:13px 0;}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;}
   .row + .row{border-top:1px solid var(--line);}
   .row .l .t{font-weight:600;font-size:14.5px;}
   .row .l .s{font-size:12px;color:var(--slate);margin-top:2px;}
@@ -238,11 +238,11 @@
   /* Data table — real columns on tablet/desktop for list screens that are
      stacked "title/subtitle + badge" cards on mobile (e.g. Sitetour history).
      Card markup is default; .dtable swaps in from 768px up. */
-  .dtable-wrap{overflow-x:auto;}
-  .dtable{display:none;width:100%;border-collapse:collapse;}
+  .dtable-wrap{display:none;overflow-x:auto;}
+  .dtable{width:100%;border-collapse:collapse;}
   @media (min-width:768px){
     .history-cards{display:none;}
-    .dtable{display:table;}
+    .dtable-wrap{display:block;}
     .dtable thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1.5px solid var(--line);word-break:break-word;}
     .dtable tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2);vertical-align:middle;word-break:break-word;}
     .dtable tbody tr:last-child td{border-bottom:none;}
@@ -417,6 +417,7 @@
     </div>
     <div style="padding-top:18px;">
       <div id="st-list-banner"></div>
+      <input id="st-search-input" placeholder="🔍 Tìm theo tên điểm, địa chỉ..." style="margin-bottom:14px;" oninput="stCheckpointSetSearch(this.value)">
       <div id="st-checkpoint-list" class="pick-grid"></div>
       <button class="btn btn-primary" style="margin-top:6px;" id="st-continue-btn" disabled onclick="goCheckinCapture()">Tiếp tục</button>
     </div>
@@ -953,9 +954,14 @@ window.addEventListener('DOMContentLoaded', () => { if (state.user) goHome(); })
 /* =========================================================
    SITETOUR
    ========================================================= */
+let stCheckpointSearch = '';
+function stCheckpointSetSearch(v) { stCheckpointSearch = v; rerenderPreservingFocus(renderCheckpointList); }
+
 async function goSitetourList() {
   showScreen('screen-sitetour-list');
   banner('st-list-banner', '', '');
+  stCheckpointSearch = '';
+  document.getElementById('st-search-input').value = '';
   document.getElementById('st-checkpoint-list').innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const cps = await api('getCheckpointsForUser', { username: state.user.username });
@@ -973,7 +979,12 @@ function renderCheckpointList() {
     wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có điểm checkin nào trong vùng của bạn.</div>';
     return;
   }
-  wrap.innerHTML = state.checkpoints.map(cp => `
+  const filtered = filterRows(state.checkpoints, stCheckpointSearch, ['checkpoint_name', 'address']);
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="empty">Không tìm thấy điểm checkin nào khớp.</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.map(cp => `
     <div class="pick ${state.selectedCheckpoint && state.selectedCheckpoint.checkpoint_id===cp.checkpoint_id?'selected':''}" onclick="selectCheckpoint('${cp.checkpoint_id}')">
       <div><div class="t">${cp.checkpoint_name}</div><div class="s">${cp.address || 'Chưa có địa chỉ'}</div></div>
       <div>${state.selectedCheckpoint && state.selectedCheckpoint.checkpoint_id===cp.checkpoint_id ? '✅' : ''}</div>
