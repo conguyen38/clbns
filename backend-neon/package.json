@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "migrate": "node migrate.js",
+    "schema:apply": "node apply_schema_http.js",
     "start": "node local-server.js",
     "dev": "vercel dev"
   },

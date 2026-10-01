@@ -681,7 +681,7 @@
 
 <script>
 /* =========================================================
-   CẤU HÌNH — dán URL Web App (Apps Script) của chị vào đây
+   CẤU HÌNH API — Vercel serverless endpoint
    ========================================================= */
 const API_URL = "/api";
 
@@ -1419,7 +1419,11 @@ function goAcceptanceHome() {
   if (isCreator) tabs.push({k:'new', label:'Hoạt động'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
   state.acceptanceTab = tabs[0].k;
-  document.getElementById('acceptance-tabs').innerHTML = tabs.map(t =>
+  const tabsEl = document.getElementById('acceptance-tabs');
+  // A lone "Hoạt động" tab adds no navigation value; hide its heading and
+  // divider. Keep the tabs visible when an SM also has "Chờ duyệt".
+  tabsEl.style.display = tabs.length > 1 ? 'flex' : 'none';
+  tabsEl.innerHTML = tabs.map(t =>
     `<div class="tab ${t.k===state.acceptanceTab?'active':''}" data-tab="${t.k}" onclick="switchAcceptanceTab('${t.k}')">${t.label}</div>`).join('');
   showScreen('screen-acceptance-home');
   renderAcceptanceTab();
@@ -1499,7 +1503,7 @@ async function renderAcceptanceActivities() {
     }
     wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian nhận nghiệm thu: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
+        <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
         <div class="r">${canCreate ? `<div style="display:flex;gap:12px;"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : '<span class="chev">›</span>'}</div>
       </div>`).join('')}</div>`;
   } catch (e) {
