@@ -312,6 +312,33 @@ ACTIONS.createAcceptanceActivity = async (pool, data) => {
   return { acceptance_activity_id: acceptanceActivityId };
 };
 
+ACTIONS.updateAcceptanceActivity = async (pool, data) => {
+  const { rows: accounts } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [data.username]);
+  if (!accounts[0] || accounts[0].role !== 'Admin') throw new Error('Chỉ Admin được sửa hoạt động nghiệm thu.');
+  const activityName = String(data.activity_name || '').trim();
+  const recordStart = new Date(data.record_start);
+  const recordEnd = new Date(data.record_end);
+  if (!activityName) throw new Error('Thiếu tên hoạt động.');
+  if (Number.isNaN(recordStart.getTime()) || Number.isNaN(recordEnd.getTime())) throw new Error('Nhập đủ ngày và giờ ghi nhận nghiệm thu.');
+  if (recordEnd <= recordStart) throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
+  const result = await pool.query(
+    `UPDATE acceptance_activities
+     SET activity_name=$2, description=$3, record_start=$4, record_end=$5
+     WHERE acceptance_activity_id=$1 AND active=true`,
+    [data.acceptance_activity_id, activityName, String(data.description || '').trim(), recordStart.toISOString(), recordEnd.toISOString()]
+  );
+  if (!result.rowCount) throw new Error('Không tìm thấy hoạt động nghiệm thu.');
+  return { ok: true };
+};
+
+ACTIONS.deleteAcceptanceActivity = async (pool, data) => {
+  const { rows: accounts } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [data.username]);
+  if (!accounts[0] || accounts[0].role !== 'Admin') throw new Error('Chỉ Admin được xóa hoạt động nghiệm thu.');
+  const result = await pool.query('UPDATE acceptance_activities SET active=false WHERE acceptance_activity_id=$1 AND active=true', [data.acceptance_activity_id]);
+  if (!result.rowCount) throw new Error('Không tìm thấy hoạt động nghiệm thu.');
+  return { ok: true };
+};
+
 ACTIONS.createAcceptance = async (pool, data) => {
   const { rows: accRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [data.creator_username]);
   const acc = accRows[0];

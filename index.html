@@ -590,7 +590,7 @@
   <div class="screen" id="screen-acceptance-activity-new">
     <div class="topbar">
       <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name">TẠO HOẠT ĐỘNG</span><span class="sub">Nghiệm thu</span></div>
+      <div class="brand"><span class="name" id="nta-title">TẠO HOẠT ĐỘNG</span><span class="sub">Nghiệm thu</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;">
@@ -1433,6 +1433,7 @@ let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
 let acceptanceActivitiesCache = [];
 let acceptanceSelectedActivityId = null;
 let acceptanceSelectedActivityName = '';
+let editingAcceptanceActivityId = null;
 
 async function renderAcceptanceTab() {
   const wrap = document.getElementById('acceptance-tab-content');
@@ -1493,20 +1494,37 @@ async function renderAcceptanceActivities() {
     wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
         <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian nhận nghiệm thu: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
-        <div class="r"><span class="chev">›</span></div>
+        <div class="r">${canCreate ? `<div style="display:flex;gap:12px;"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : '<span class="chev">›</span>'}</div>
       </div>`).join('')}</div>`;
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
 }
 
-function goAcceptanceActivityNew() {
-  document.getElementById('nta-name').value = '';
-  document.getElementById('nta-start').value = '';
-  document.getElementById('nta-end').value = '';
-  document.getElementById('nta-description').value = '';
+function fmtDateTimeLocal(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function goAcceptanceActivityNew(editId) {
+  editingAcceptanceActivityId = editId || null;
+  const activity = editId ? acceptanceActivitiesCache.find(a => a.acceptance_activity_id === editId) : null;
+  document.getElementById('nta-title').innerText = activity ? 'SỬA HOẠT ĐỘNG' : 'TẠO HOẠT ĐỘNG';
+  document.getElementById('nta-submit-btn').innerText = activity ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  document.getElementById('nta-name').value = activity ? activity.activity_name : '';
+  document.getElementById('nta-start').value = activity ? fmtDateTimeLocal(activity.record_start) : '';
+  document.getElementById('nta-end').value = activity ? fmtDateTimeLocal(activity.record_end) : '';
+  document.getElementById('nta-description').value = activity ? (activity.description || '') : '';
   banner('nta-banner', '', '');
   showScreen('screen-acceptance-activity-new');
+}
+
+function editAcceptanceActivity(id, evt) {
+  evt.stopPropagation();
+  goAcceptanceActivityNew(id);
 }
 
 async function saveAcceptanceActivity(evt) {
@@ -1519,12 +1537,23 @@ async function saveAcceptanceActivity(evt) {
   if (new Date(recordEnd) <= new Date(recordStart)) { banner('nta-banner', 'err', 'Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
   btn.disabled = true;
   try {
-    await api('createAcceptanceActivity', { username: state.user.username, activity_name: activityName, record_start: new Date(recordStart).toISOString(), record_end: new Date(recordEnd).toISOString(), description: document.getElementById('nta-description').value.trim() });
+    const payload = { username: state.user.username, activity_name: activityName, record_start: new Date(recordStart).toISOString(), record_end: new Date(recordEnd).toISOString(), description: document.getElementById('nta-description').value.trim() };
+    if (editingAcceptanceActivityId) await api('updateAcceptanceActivity', { ...payload, acceptance_activity_id: editingAcceptanceActivityId });
+    else await api('createAcceptanceActivity', payload);
     goAcceptanceHome();
   } catch (e) {
     banner('nta-banner', 'err', e.message);
     btn.disabled = false;
   }
+}
+
+async function deleteAcceptanceActivity(id, evt) {
+  evt.stopPropagation();
+  if (!confirm('Xóa hoạt động này? Các nghiệm thu đã gửi vẫn được giữ trong lịch sử.')) return;
+  try {
+    await api('deleteAcceptanceActivity', { username: state.user.username, acceptance_activity_id: id });
+    renderAcceptanceActivities();
+  } catch (e) { alert(e.message); }
 }
 
 function setAcceptanceReportMonth(month) {
