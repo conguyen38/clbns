@@ -573,22 +573,14 @@
     <div style="padding-top:18px;" class="form-col">
       <div id="nt-banner"></div>
 
-      <div class="card" style="padding:13px 16px;">
-        <div class="eyebrow" style="margin-bottom:2px;">Mã nghiệm thu</div>
-        <div class="mono" id="nt-code" style="font-size:15px;font-weight:600;color:var(--ink);"></div>
-      </div>
-
-      <label style="margin-top:0;">Tên hoạt động</label>
-      <input id="nt-activity-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage" oninput="checkAcceptanceSubmitReady()">
-
-      <label>Ghi chú (không bắt buộc)</label>
-      <textarea id="nt-description" placeholder="Nhập ghi chú nếu cần..."></textarea>
-
-      <label>Ảnh chụp màn hình</label>
+      <label style="margin-top:0;">Ảnh chụp màn hình</label>
       <input type="file" accept="image/png,image/jpeg,image/webp" id="nt-photo-input" onchange="onAcceptancePhotoSelected(event)" style="display:none;">
       <label for="nt-photo-input" class="btn btn-outline" style="margin-top:0;">🖼️ Chọn ảnh chụp màn hình</label>
       <div class="hint" id="nt-photo-filename">Chưa chọn ảnh</div>
       <img id="nt-photo-preview" class="photo-preview" style="display:none;">
+
+      <label>Ghi chú (không bắt buộc)</label>
+      <textarea id="nt-description" placeholder="Nhập ghi chú nếu cần..."></textarea>
 
       <button class="btn btn-primary" style="margin-top:22px;" id="nt-submit-btn" disabled onclick="submitAcceptanceNow()">Gửi duyệt</button>
     </div>
@@ -1440,6 +1432,7 @@ let acceptanceRowsContainerId = 'acceptance-tab-content';
 let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
 let acceptanceActivitiesCache = [];
 let acceptanceSelectedActivityId = null;
+let acceptanceSelectedActivityName = '';
 
 async function renderAcceptanceTab() {
   const wrap = document.getElementById('acceptance-tab-content');
@@ -1606,18 +1599,16 @@ function goAcceptanceNewForm(prefill) {
   const isResubmission = !!(prefill && prefill.acceptance_id);
   state.acceptanceResubmitFrom = isResubmission ? prefill.acceptance_id : null;
   acceptanceSelectedActivityId = prefill && prefill.acceptance_activity_id ? prefill.acceptance_activity_id : null;
+  acceptanceSelectedActivityName = prefill ? (prefill.activity_name || '') : '';
   state.acceptancePhotoBase64 = null;
   state.acceptancePhotoThumbBase64 = null;
   document.getElementById('nt-photo-input').value = '';
   document.getElementById('nt-photo-filename').innerText = 'Chưa chọn ảnh';
   document.getElementById('nt-photo-preview').style.display = 'none';
   document.getElementById('nt-submit-btn').disabled = true;
-  document.getElementById('nt-code').innerText = genAcceptanceCode();
-
   if (isResubmission) {
     banner('nt-banner','info',`Đang tạo lại từ hoạt động bị từ chối <b>${prefill.acceptance_code || prefill.acceptance_id}</b> — thông tin cũ đã được điền sẵn, chị chỉ cần chỉnh sửa phần cần thiết.`);
   }
-  document.getElementById('nt-activity-name').value = prefill ? (prefill.activity_name || '') : '';
   // Mô tả của hoạt động là hướng dẫn từ Admin, không tự điền vào ghi chú của người gửi.
   document.getElementById('nt-description').value = isResubmission ? (prefill.description || '') : '';
 }
@@ -1643,21 +1634,18 @@ function onAcceptancePhotoSelected(evt) {
 }
 
 function checkAcceptanceSubmitReady() {
-  const name = document.getElementById('nt-activity-name').value.trim();
-  document.getElementById('nt-submit-btn').disabled = !(name && state.acceptancePhotoBase64);
+  document.getElementById('nt-submit-btn').disabled = !state.acceptancePhotoBase64;
 }
 
 let isSubmittingAcceptance = false;
 async function submitAcceptanceNow() {
   if (isSubmittingAcceptance) return; // chặn double-tap ngay từ phía client
-  const activityName = document.getElementById('nt-activity-name').value.trim();
-  if (!activityName) { banner('nt-banner','err','Vui lòng nhập Tên hoạt động.'); return; }
   if (!state.acceptancePhotoBase64) { banner('nt-banner','err','Vui lòng chọn ảnh chụp màn hình.'); return; }
 
   const payload = {
     creator_username: state.user.username,
-    acceptance_code: document.getElementById('nt-code').innerText,
-    activity_name: activityName,
+    acceptance_code: genAcceptanceCode(),
+    activity_name: acceptanceSelectedActivityName,
     description: document.getElementById('nt-description').value.trim(),
     screenshot_base64: state.acceptancePhotoBase64,
     screenshot_thumb_base64: state.acceptancePhotoThumbBase64,

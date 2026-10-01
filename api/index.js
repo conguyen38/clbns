@@ -316,8 +316,8 @@ ACTIONS.createAcceptance = async (pool, data) => {
   const { rows: accRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [data.creator_username]);
   const acc = accRows[0];
   if (!acc) throw new Error('Không tìm thấy tài khoản.');
-  if (!data.activity_name) throw new Error('Thiếu tên hoạt động.');
-  let activityName = data.activity_name;
+  if (!data.activity_name && !data.acceptance_activity_id) throw new Error('Thiếu hoạt động nghiệm thu.');
+  let activityName = data.activity_name || '';
   if (data.acceptance_activity_id) {
     const { rows: activityRows } = await pool.query('SELECT * FROM acceptance_activities WHERE acceptance_activity_id=$1', [data.acceptance_activity_id]);
     const activity = activityRows[0];
