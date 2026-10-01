@@ -310,6 +310,7 @@
   .pager button{width:auto;padding:8px 14px;font-family:'Roboto',sans-serif;font-weight:600;font-size:13px;text-transform:none;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;}
   .pager button:disabled{opacity:0.4;cursor:not-allowed;}
   .pager-info{font-size:12.5px;color:var(--slate);white-space:nowrap;}
+  .list-count{font-size:12.5px;color:var(--slate);text-align:left;margin:2px 4px 10px;}
 
   /* Admin list toolbar — search box + "Tạo mới" */
   .admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 16px;}
@@ -774,14 +775,17 @@ function sliceForPage(rows, page) {
   return { pageRows: rows.slice(start, start + PAGE_SIZE), page: p, totalPages, total: rows.length };
 }
 function renderPager(page, totalPages, total, changeFnName) {
-  if (totalPages <= 1) {
-    return `<div class="pager"><span class="pager-info">${total} mục</span></div>`;
-  }
+  if (totalPages <= 1) return '';
   return `<div class="pager">
     <button ${page<=1?'disabled':''} onclick="${changeFnName}(${page-1})">‹ Trước</button>
-    <span class="pager-info">Trang ${page}/${totalPages} · ${total} mục</span>
+    <span class="pager-info">Trang ${page}/${totalPages}</span>
     <button ${page>=totalPages?'disabled':''} onclick="${changeFnName}(${page+1})">Sau ›</button>
   </div>`;
+}
+// Count line shown above the list/table (left-aligned), separate from the
+// pager controls which only appear when there's more than one page.
+function renderListCount(total) {
+  return `<div class="list-count">${total.toLocaleString('en-US')} mục</div>`;
 }
 
 function fmtDistance(m) {
@@ -1232,7 +1236,7 @@ function renderStHistory() {
       </table>
       ${renderPager(page, totalPages, total, 'stHistorySetPage')}
     </div>`;
-  wrap.innerHTML = cardsHtml + tableHtml;
+  wrap.innerHTML = renderListCount(total) + cardsHtml + tableHtml;
 }
 
 /* =========================================================
@@ -1308,7 +1312,7 @@ function renderMeetingRows() {
   const rows = meetingRowsCache;
   if (!rows.length) { wrap.innerHTML = `<div class="empty"><div class="big">📭</div>${meetingRowsIsApproval?'Không có meeting nào chờ duyệt.':'Chưa có meeting nào.'}</div>`; return; }
   const { pageRows, page, totalPages, total } = sliceForPage(rows, meetingRowsPage);
-  wrap.innerHTML = '<div class="card">' + pageRows.map(m => `
+  wrap.innerHTML = renderListCount(total) + '<div class="card">' + pageRows.map(m => `
     <div class="row" style="cursor:pointer;" onclick="openMeetingDetail('${m.meeting_id}')">
       <div class="l"><div class="t mono" style="font-size:12px;color:var(--slate);">${m.meeting_code || m.meeting_id}</div>
         <div class="t">${meetingTitle(m)} ${isGpsInvalid(m) ? '<span class="badge rejectedsm" title="GPS ngoài phạm vi chi nhánh đã chọn">⚠️ GPS</span>' : ''}</div>
@@ -1690,7 +1694,7 @@ function renderAccountsView() {
         <td class="nowrap"><div style="display:flex;gap:10px;">${acActions(a)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(acPageInfo.page, acPageInfo.totalPages, acPageInfo.total, 'acSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${acSearch ? 'Không tìm thấy tài khoản nào khớp.' : 'Chưa có tài khoản nào.'}</div></div>`;
-  wrap.innerHTML = toolbarHtml + listHtml;
+  wrap.innerHTML = toolbarHtml + renderListCount(filtered.length) + listHtml;
   document.getElementById('ac-role-filter').value = acRoleFilter;
   document.getElementById('ac-region-filter').value = acRegionFilter;
   buildCustomSelect(document.getElementById('ac-role-filter'));
@@ -1845,7 +1849,7 @@ function renderRegionsView() {
         <td class="nowrap"><div style="display:flex;gap:10px;">${rgActions(r)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(rgPageInfo.page, rgPageInfo.totalPages, rgPageInfo.total, 'rgSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${rgSearch ? 'Không tìm thấy vùng nào khớp.' : 'Chưa có vùng nào.'}</div></div>`;
-  wrap.innerHTML = toolbarHtml + listHtml;
+  wrap.innerHTML = toolbarHtml + renderListCount(filtered.length) + listHtml;
 }
 
 async function saveRegion(evt) {
@@ -1951,7 +1955,7 @@ function renderBranchesView() {
         <td class="nowrap"><div style="display:flex;gap:10px;">${brActions(b)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(brPageInfo.page, brPageInfo.totalPages, brPageInfo.total, 'brSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${brSearch || brRegionFilter ? 'Không tìm thấy chi nhánh nào khớp.' : 'Chưa có chi nhánh nào.'}</div></div>`;
-  wrap.innerHTML = toolbarHtml + listHtml;
+  wrap.innerHTML = toolbarHtml + renderListCount(filtered.length) + listHtml;
   document.getElementById('br-region-filter').value = brRegionFilter;
   buildCustomSelect(document.getElementById('br-region-filter'));
 }
@@ -2055,7 +2059,7 @@ function renderCheckpointsView() {
         <td class="nowrap"><div style="display:flex;gap:10px;">${cpActions(c)}</div></td>
       </tr>`).join('') + `</tbody></table>${renderPager(cpPageInfo.page, cpPageInfo.totalPages, cpPageInfo.total, 'cpSetPage')}</div>`
   ) : `<div class="card"><div class="empty">${cpSearch ? 'Không tìm thấy điểm checkin nào khớp.' : 'Chưa có điểm checkin nào.'}</div></div>`;
-  wrap.innerHTML = toolbarHtml + listHtml;
+  wrap.innerHTML = toolbarHtml + renderListCount(filtered.length) + listHtml;
 }
 
 async function saveCheckpoint(evt) {
