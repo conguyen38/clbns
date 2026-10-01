@@ -1069,7 +1069,9 @@ function goSitetourCreateActivity(editId) {
   editingSitetourActivityId = editId || null;
   const editing = editId ? state.checkpoints.find(c => c.checkpoint_id === editId) : null;
   document.getElementById('sta-title').innerText = editing ? 'SỬA HOẠT ĐỘNG' : 'TẠO HOẠT ĐỘNG';
-  document.getElementById('sta-submit-btn').innerText = editing ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  const submitBtn = document.getElementById('sta-submit-btn');
+  submitBtn.innerText = editing ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  submitBtn.disabled = false;
   document.getElementById('sta-name').value = editing ? editing.checkpoint_name : '';
   document.getElementById('sta-type').value = editing ? editing.activity_type : 'offline';
   document.getElementById('sta-address').value = editing ? (editing.address || '') : '';
@@ -1571,7 +1573,9 @@ function goAcceptanceActivityNew(editId) {
   editingAcceptanceActivityId = editId || null;
   const activity = editId ? acceptanceActivitiesCache.find(a => a.acceptance_activity_id === editId) : null;
   document.getElementById('nta-title').innerText = activity ? 'SỬA HOẠT ĐỘNG' : 'TẠO HOẠT ĐỘNG';
-  document.getElementById('nta-submit-btn').innerText = activity ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  const submitBtn = document.getElementById('nta-submit-btn');
+  submitBtn.innerText = activity ? 'Cập nhật hoạt động' : 'Tạo hoạt động';
+  submitBtn.disabled = false;
   document.getElementById('nta-name').value = activity ? activity.activity_name : '';
   document.getElementById('nta-start').value = activity ? fmtDateTimeLocal(activity.record_start) : '';
   document.getElementById('nta-end').value = activity ? fmtDateTimeLocal(activity.record_end) : '';
