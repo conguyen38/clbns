@@ -1766,12 +1766,14 @@ function rgSetSearch(v) { rgSearch = v; rgPage = 1; rerenderPreservingFocus(rend
 function rgShowCreate() { editingRegionCode = null; rgViewMode = 'form'; renderRegionsView(); }
 function rgShowList() { editingRegionCode = null; rgViewMode = 'list'; renderRegionsView(); }
 
+let rgCacheAccounts = [];
+
 async function renderAdminRegions(editCode) {
   if (editCode) { editingRegionCode = editCode; rgViewMode = 'form'; }
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    rgCache = await api('adminListRegions');
+    [rgCache, rgCacheAccounts] = await Promise.all([api('adminListRegions'), api('adminListAccounts')]);
     state.regionsCache = rgCache;
     renderRegionsView();
   } catch (e) { wrap.innerHTML = `<div class="banner err">${e.message}</div>`; }
@@ -1783,18 +1785,27 @@ function renderRegionsView() {
 
   if (rgViewMode === 'form') {
     const editing = editingRegionCode ? regions.find(r => r.region_code === editingRegionCode) : null;
+    const smCandidates = rgCacheAccounts.filter(a => a.role === 'SM' && String(a.active).toUpperCase() === 'TRUE');
     wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa vùng ' + editing.region_code : 'Tạo vùng mới'}</div>
         <label style="margin-top:0;">Mã vùng</label><input id="rg-code" placeholder="vd: V10" value="${editing ? editing.region_code : ''}" ${editing ? 'disabled' : ''}>
         <label>Tên vùng</label><input id="rg-name" placeholder="vd: Vùng 10 - Quận 7" value="${editing ? editing.region_name : ''}">
-        <label>Username SM phụ trách</label><input id="rg-sm" placeholder="username SM" value="${editing ? (editing.sm_username || '') : ''}">
+        <label>SM phụ trách</label>
+        <select id="rg-sm">
+          <option value="">— Chưa gán —</option>
+          ${smCandidates.map(a => `<option value="${a.username}">${a.full_name} (@${a.username})</option>`).join('')}
+        </select>
+        ${!smCandidates.length ? '<div class="hint">Chưa có tài khoản SM nào — tạo tài khoản SM trước ở tab Tài khoản.</div>' : ''}
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveRegion(event)">${editing ? 'Cập nhật vùng' : 'Tạo vùng'}</button>
           <button class="btn btn-outline" onclick="rgShowList()">Hủy</button>
         </div>
         <div id="rg-banner"></div>
       </div>`;
+    const smSel = document.getElementById('rg-sm');
+    smSel.value = editing ? (editing.sm_username || '') : '';
+    buildCustomSelect(smSel);
     return;
   }
 
