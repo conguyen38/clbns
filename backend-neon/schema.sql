@@ -83,10 +83,17 @@ CREATE TABLE IF NOT EXISTS acceptance_activities (
   acceptance_activity_id  text PRIMARY KEY,
   activity_name           text NOT NULL,
   description             text NOT NULL DEFAULT '',
+  record_start            timestamptz NOT NULL,
+  record_end              timestamptz NOT NULL,
   created_by              text NOT NULL DEFAULT '',
   active                  boolean NOT NULL DEFAULT true,
   created_at              timestamptz NOT NULL DEFAULT now()
 );
+
+-- Tương thích database đã có sẵn trước khi bổ sung khoảng thời gian nghiệm thu.
+ALTER TABLE acceptance_activities ADD COLUMN IF NOT EXISTS record_start timestamptz;
+ALTER TABLE acceptance_activities ADD COLUMN IF NOT EXISTS record_end timestamptz;
+ALTER TABLE acceptances ADD COLUMN IF NOT EXISTS acceptance_activity_id text;
 
 CREATE INDEX IF NOT EXISTS idx_checkins_username ON checkins(username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_creator ON acceptances(creator_username);

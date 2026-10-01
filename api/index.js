@@ -287,7 +287,7 @@ const ACCEPTANCE_LIST_COLUMNS = `acceptance_id, acceptance_code, creator_usernam
 
 ACTIONS.listAcceptanceActivities = async (pool, data) => {
   const { rows } = await pool.query(
-    `SELECT acceptance_activity_id, activity_name, description, created_by, created_at
+    `SELECT acceptance_activity_id, activity_name, description, record_start, record_end, created_by, created_at
      FROM acceptance_activities WHERE active=true ORDER BY created_at DESC, activity_name`
   );
   return rows;
@@ -299,11 +299,15 @@ ACTIONS.createAcceptanceActivity = async (pool, data) => {
   if (!account || account.role !== 'Admin') throw new Error('Chỉ Admin được tạo hoạt động nghiệm thu.');
   const activityName = String(data.activity_name || '').trim();
   if (!activityName) throw new Error('Thiếu tên hoạt động.');
+  const recordStart = new Date(data.record_start);
+  const recordEnd = new Date(data.record_end);
+  if (Number.isNaN(recordStart.getTime()) || Number.isNaN(recordEnd.getTime())) throw new Error('Nhập đủ ngày và giờ ghi nhận nghiệm thu.');
+  if (recordEnd <= recordStart) throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
   const acceptanceActivityId = require('crypto').randomUUID();
   await pool.query(
-    `INSERT INTO acceptance_activities (acceptance_activity_id, activity_name, description, created_by)
-     VALUES ($1,$2,$3,$4)`,
-    [acceptanceActivityId, activityName, String(data.description || '').trim(), account.username]
+    `INSERT INTO acceptance_activities (acceptance_activity_id, activity_name, description, record_start, record_end, created_by)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [acceptanceActivityId, activityName, String(data.description || '').trim(), recordStart.toISOString(), recordEnd.toISOString(), account.username]
   );
   return { acceptance_activity_id: acceptanceActivityId };
 };
@@ -313,16 +317,28 @@ ACTIONS.createAcceptance = async (pool, data) => {
   const acc = accRows[0];
   if (!acc) throw new Error('Không tìm thấy tài khoản.');
   if (!data.activity_name) throw new Error('Thiếu tên hoạt động.');
+  let activityName = data.activity_name;
+  if (data.acceptance_activity_id) {
+    const { rows: activityRows } = await pool.query('SELECT * FROM acceptance_activities WHERE acceptance_activity_id=$1', [data.acceptance_activity_id]);
+    const activity = activityRows[0];
+    if (!activity || !activity.active) throw new Error('Hoạt động nghiệm thu không còn khả dụng.');
+    if (!activity.record_start || !activity.record_end) throw new Error('Hoạt động chưa có khoảng thời gian ghi nhận.');
+    const now = Date.now();
+    if (now < new Date(activity.record_start).getTime() || now > new Date(activity.record_end).getTime()) {
+      throw new Error('Hoạt động hiện không trong thời gian ghi nhận nghiệm thu.');
+    }
+    activityName = activity.activity_name;
+  }
   // SM và Admin là các cấp cao nhất trong luồng hiện tại (không còn SSM),
   // nên nghiệm thu do họ tự tạo được coi là đã duyệt.
   const status = ['SM', 'Admin'].includes(acc.role) ? 'Approved' : 'PendingSM';
   const acceptanceId = require('crypto').randomUUID();
   await pool.query(
     `INSERT INTO acceptances (acceptance_id, acceptance_code, creator_username, creator_name, creator_role,
-       activity_name, description, screenshot_url, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'','', $11, now())`,
+       activity_name, description, screenshot_url, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at, acceptance_activity_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'','', $11, now(), $12)`,
     [acceptanceId, data.acceptance_code || '', acc.username, acc.full_name, acc.role,
-     data.activity_name, data.description || '', data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.resubmitted_from || '']
+     activityName, data.description || '', data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.resubmitted_from || '', data.acceptance_activity_id || null]
   );
   return { acceptance_id: acceptanceId };
 };

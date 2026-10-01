@@ -606,6 +606,11 @@
       <div class="card">
         <label style="margin-top:0;">Tên hoạt động</label>
         <input id="nta-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage">
+        <label>Thời gian ghi nhận nghiệm thu</label>
+        <div class="btn-row" style="margin-top:0;">
+          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Từ ngày, giờ</div><input id="nta-start" type="datetime-local"></div>
+          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Đến ngày, giờ</div><input id="nta-end" type="datetime-local"></div>
+        </div>
         <label>Mô tả / hướng dẫn</label>
         <textarea id="nta-description" placeholder="Nêu yêu cầu hoặc bằng chứng cần nộp..."></textarea>
         <div class="btn-row" style="margin-top:18px;">
@@ -1435,6 +1440,7 @@ let acceptanceRowsIsApproval = false;
 let acceptanceRowsContainerId = 'acceptance-tab-content';
 let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
 let acceptanceActivitiesCache = [];
+let acceptanceSelectedActivityId = null;
 
 async function renderAcceptanceTab() {
   const wrap = document.getElementById('acceptance-tab-content');
@@ -1494,7 +1500,7 @@ async function renderAcceptanceActivities() {
     }
     wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div class="l"><div class="t">${a.activity_name}</div><div class="s">${a.description || 'Nhấn để gửi ảnh/bằng chứng nghiệm thu'}</div></div>
+        <div class="l"><div class="t">${a.activity_name}</div><div class="s">${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div><div class="s">${a.description || 'Nhấn để gửi ảnh/bằng chứng nghiệm thu'}</div></div>
         <div class="r"><span class="chev">›</span></div>
       </div>`).join('')}</div>`;
   } catch (e) {
@@ -1504,6 +1510,8 @@ async function renderAcceptanceActivities() {
 
 function goAcceptanceActivityNew() {
   document.getElementById('nta-name').value = '';
+  document.getElementById('nta-start').value = '';
+  document.getElementById('nta-end').value = '';
   document.getElementById('nta-description').value = '';
   banner('nta-banner', '', '');
   showScreen('screen-acceptance-activity-new');
@@ -1513,9 +1521,13 @@ async function saveAcceptanceActivity(evt) {
   const btn = evt.currentTarget;
   const activityName = document.getElementById('nta-name').value.trim();
   if (!activityName) { banner('nta-banner', 'err', 'Vui lòng nhập tên hoạt động.'); return; }
+  const recordStart = document.getElementById('nta-start').value;
+  const recordEnd = document.getElementById('nta-end').value;
+  if (!recordStart || !recordEnd) { banner('nta-banner', 'err', 'Vui lòng nhập đủ thời gian bắt đầu và kết thúc.'); return; }
+  if (new Date(recordEnd) <= new Date(recordStart)) { banner('nta-banner', 'err', 'Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
   btn.disabled = true;
   try {
-    await api('createAcceptanceActivity', { username: state.user.username, activity_name: activityName, description: document.getElementById('nta-description').value.trim() });
+    await api('createAcceptanceActivity', { username: state.user.username, activity_name: activityName, record_start: new Date(recordStart).toISOString(), record_end: new Date(recordEnd).toISOString(), description: document.getElementById('nta-description').value.trim() });
     goAcceptanceHome();
   } catch (e) {
     banner('nta-banner', 'err', e.message);
@@ -1594,6 +1606,7 @@ function goAcceptanceNewForm(prefill) {
   banner('nt-banner','','');
   const isResubmission = !!(prefill && prefill.acceptance_id);
   state.acceptanceResubmitFrom = isResubmission ? prefill.acceptance_id : null;
+  acceptanceSelectedActivityId = prefill && prefill.acceptance_activity_id ? prefill.acceptance_activity_id : null;
   state.acceptancePhotoBase64 = null;
   state.acceptancePhotoThumbBase64 = null;
   document.getElementById('nt-photo-input').value = '';
@@ -1648,7 +1661,8 @@ async function submitAcceptanceNow() {
     description: document.getElementById('nt-description').value.trim(),
     screenshot_base64: state.acceptancePhotoBase64,
     screenshot_thumb_base64: state.acceptancePhotoThumbBase64,
-    resubmitted_from: state.acceptanceResubmitFrom || ''
+    resubmitted_from: state.acceptanceResubmitFrom || '',
+    acceptance_activity_id: acceptanceSelectedActivityId || ''
   };
 
   isSubmittingAcceptance = true;
