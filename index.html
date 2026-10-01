@@ -574,6 +574,28 @@
     </div>
   </div>
 
+  <!-- ===================== ACCEPTANCE: admin create activity ===================== -->
+  <div class="screen" id="screen-acceptance-activity-new">
+    <div class="topbar">
+      <button class="back" onclick="goAcceptanceHome()">‹</button>
+      <div class="brand"><span class="name">TẠO HOẠT ĐỘNG</span><span class="sub">Nghiệm thu</span></div>
+      <span></span>
+    </div>
+    <div style="padding-top:18px;">
+      <div class="card">
+        <label style="margin-top:0;">Tên hoạt động</label>
+        <input id="nta-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage">
+        <label>Mô tả / hướng dẫn</label>
+        <textarea id="nta-description" placeholder="Nêu yêu cầu hoặc bằng chứng cần nộp..."></textarea>
+        <div class="btn-row" style="margin-top:18px;">
+          <button class="btn btn-primary" id="nta-submit-btn" onclick="saveAcceptanceActivity(event)">Tạo hoạt động</button>
+          <button class="btn btn-outline" onclick="goAcceptanceHome()">Hủy</button>
+        </div>
+        <div id="nta-banner"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===================== ACCEPTANCE: detail ===================== -->
   <div class="screen" id="screen-acceptance-detail">
     <div class="topbar">
@@ -814,7 +836,7 @@ function statusLabel(s) {
 const SIDEBAR_NAV_MAP = {
   'screen-home': 'home',
   'screen-sitetour-list': 'sitetour', 'screen-sitetour-create': 'sitetour', 'screen-sitetour-checkin': 'sitetour', 'screen-sitetour-result': 'sitetour', 'screen-sitetour-history': 'sitetour',
-  'screen-acceptance-home': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
+  'screen-acceptance-home': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-activity-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
   'screen-admin': 'admin',
 };
 
@@ -1368,9 +1390,11 @@ function goAcceptanceHome() {
   // khỏi điều kiện này nên chỉ nhìn thấy tab "Lịch sử duyệt".
   const isCreator = ['SA', 'SM', 'Admin'].includes(state.user.role);
   const isApprover = state.user.role === 'SM';
+  const canViewReport = state.user.role === 'SM' || state.user.role === 'Admin';
   const tabs = [];
-  if (isCreator) tabs.push({k:'new', label:'Tạo mới'});
+  if (isCreator) tabs.push({k:'new', label:'Hoạt động'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
+  if (canViewReport) tabs.push({k:'report', label:'Báo cáo'});
   tabs.push({k:'history', label:'Lịch sử duyệt'});
   state.acceptanceTab = tabs[0].k;
   document.getElementById('acceptance-tabs').innerHTML = tabs.map(t =>
@@ -1388,16 +1412,17 @@ function switchAcceptanceTab(k) {
 let acceptanceRowsCache = [];
 let acceptanceRowsPage = 1;
 let acceptanceRowsIsApproval = false;
+let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
+let acceptanceActivitiesCache = [];
 
 async function renderAcceptanceTab() {
   const wrap = document.getElementById('acceptance-tab-content');
   if (state.acceptanceTab === 'new') {
-    wrap.innerHTML = `
-      <div class="tap-card" onclick="goAcceptanceNewForm()">
-        <div class="icon amber">✅</div>
-        <div><div class="t">Tạo nghiệm thu mới</div><div class="d">Gửi ảnh chụp màn hình & gửi duyệt</div></div>
-        <div class="chev">›</div>
-      </div>`;
+    renderAcceptanceActivities();
+    return;
+  }
+  if (state.acceptanceTab === 'report') {
+    renderAcceptanceReport();
     return;
   }
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
@@ -1412,6 +1437,82 @@ async function renderAcceptanceTab() {
       acceptanceRowsIsApproval = false;
     }
     renderAcceptanceRows();
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+async function renderAcceptanceActivities() {
+  const wrap = document.getElementById('acceptance-tab-content');
+  const canCreate = state.user.role === 'Admin';
+  wrap.innerHTML = `<div id="nt-activities-banner"></div>${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="loading-block"><div class="spin"></div></div>`;
+  try {
+    acceptanceActivitiesCache = await api('listAcceptanceActivities', { username: state.user.username });
+    if (!acceptanceActivitiesCache.length) {
+      wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="empty"><div class="big">📭</div>Chưa có hoạt động nghiệm thu nào.</div>`;
+      return;
+    }
+    wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
+      <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
+        <div class="l"><div class="t">${a.activity_name}</div><div class="s">${a.description || 'Nhấn để gửi ảnh/bằng chứng nghiệm thu'}</div></div>
+        <div class="r"><span class="chev">›</span></div>
+      </div>`).join('')}</div>`;
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+function goAcceptanceActivityNew() {
+  document.getElementById('nta-name').value = '';
+  document.getElementById('nta-description').value = '';
+  banner('nta-banner', '', '');
+  showScreen('screen-acceptance-activity-new');
+}
+
+async function saveAcceptanceActivity(evt) {
+  const btn = evt.currentTarget;
+  const activityName = document.getElementById('nta-name').value.trim();
+  if (!activityName) { banner('nta-banner', 'err', 'Vui lòng nhập tên hoạt động.'); return; }
+  btn.disabled = true;
+  try {
+    await api('createAcceptanceActivity', { username: state.user.username, activity_name: activityName, description: document.getElementById('nta-description').value.trim() });
+    goAcceptanceHome();
+  } catch (e) {
+    banner('nta-banner', 'err', e.message);
+    btn.disabled = false;
+  }
+}
+
+function setAcceptanceReportMonth(month) {
+  acceptanceReportMonth = month;
+  renderAcceptanceReport();
+}
+
+async function renderAcceptanceReport() {
+  const wrap = document.getElementById('acceptance-tab-content');
+  wrap.innerHTML = `
+    <div class="card admin-toolbar">
+      <div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div><input type="month" value="${acceptanceReportMonth}" onchange="setAcceptanceReportMonth(this.value)"></div>
+    </div>
+    <div class="loading-block"><div class="spin"></div></div>`;
+  try {
+    const report = await api('getMonthlyActivityReport', { username: state.user.username, month: acceptanceReportMonth });
+    const rows = report.rows || [];
+    const totalCheckins = rows.reduce((sum, r) => sum + Number(r.checkin_activities || 0), 0);
+    const totalAcceptances = rows.reduce((sum, r) => sum + Number(r.acceptance_activities || 0), 0);
+    const scopeLabel = state.user.role === 'SM' ? 'Nhân viên thuộc phạm vi quản lý' : 'Toàn bộ nhân viên';
+    if (!rows.length) {
+      wrap.innerHTML = `<div class="card"><div class="eyebrow">${scopeLabel}</div><div class="empty"><div class="big">📊</div>Chưa có nhân viên trong phạm vi báo cáo.</div></div>`;
+      return;
+    }
+    const tableRows = rows.map(r => `<tr><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${r.checkin_activities}</td><td class="num mono">${r.acceptance_activities}</td><td class="num mono"><b>${Number(r.checkin_activities) + Number(r.acceptance_activities)}</b></td></tr>`).join('');
+    const cards = rows.map(r => `<div class="row"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username}</div></div><div class="r mono" style="text-align:right;"><b>${Number(r.checkin_activities) + Number(r.acceptance_activities)}</b><div class="s">Check in ${r.checkin_activities} · Nghiệm thu ${r.acceptance_activities}</div></div></div>`).join('');
+    wrap.innerHTML = `
+      <div class="card admin-toolbar"><div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div><input type="month" value="${report.month}" onchange="setAcceptanceReportMonth(this.value)"></div></div>
+      <div class="hint" style="margin:14px 0 10px;">${scopeLabel} · Check in tính theo hoạt động khác nhau; Nghiệm thu tính theo lần gửi.</div>
+      <div class="btn-row" style="margin:0 0 14px;"><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Hoạt động Check in</div><div style="font-size:24px;font-weight:800;">${totalCheckins}</div></div><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Lần nghiệm thu</div><div style="font-size:24px;font-weight:800;">${totalAcceptances}</div></div></div>
+      <div class="card history-cards">${cards}</div>
+      <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
@@ -1451,7 +1552,8 @@ function genAcceptanceCode() {
 function goAcceptanceNewForm(prefill) {
   showScreen('screen-acceptance-new');
   banner('nt-banner','','');
-  state.acceptanceResubmitFrom = prefill ? prefill.acceptance_id : null;
+  const isResubmission = !!(prefill && prefill.acceptance_id);
+  state.acceptanceResubmitFrom = isResubmission ? prefill.acceptance_id : null;
   state.acceptancePhotoBase64 = null;
   state.acceptancePhotoThumbBase64 = null;
   document.getElementById('nt-photo-input').value = '';
@@ -1460,7 +1562,7 @@ function goAcceptanceNewForm(prefill) {
   document.getElementById('nt-submit-btn').disabled = true;
   document.getElementById('nt-code').innerText = genAcceptanceCode();
 
-  if (prefill) {
+  if (isResubmission) {
     banner('nt-banner','info',`Đang tạo lại từ hoạt động bị từ chối <b>${prefill.acceptance_code || prefill.acceptance_id}</b> — thông tin cũ đã được điền sẵn, chị chỉ cần chỉnh sửa phần cần thiết.`);
   }
   document.getElementById('nt-activity-name').value = prefill ? (prefill.activity_name || '') : '';

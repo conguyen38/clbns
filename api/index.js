@@ -285,6 +285,29 @@ ACTIONS.listCheckins = async (pool, data) => {
 // ghi) -> getAcceptanceById mới trả ảnh đầy đủ cho trang chi tiết.
 const ACCEPTANCE_LIST_COLUMNS = `acceptance_id, acceptance_code, creator_username, creator_name, creator_role, activity_name, description, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at`;
 
+ACTIONS.listAcceptanceActivities = async (pool, data) => {
+  const { rows } = await pool.query(
+    `SELECT acceptance_activity_id, activity_name, description, created_by, created_at
+     FROM acceptance_activities WHERE active=true ORDER BY created_at DESC, activity_name`
+  );
+  return rows;
+};
+
+ACTIONS.createAcceptanceActivity = async (pool, data) => {
+  const { rows: accounts } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [data.username]);
+  const account = accounts[0];
+  if (!account || account.role !== 'Admin') throw new Error('Chỉ Admin được tạo hoạt động nghiệm thu.');
+  const activityName = String(data.activity_name || '').trim();
+  if (!activityName) throw new Error('Thiếu tên hoạt động.');
+  const acceptanceActivityId = require('crypto').randomUUID();
+  await pool.query(
+    `INSERT INTO acceptance_activities (acceptance_activity_id, activity_name, description, created_by)
+     VALUES ($1,$2,$3,$4)`,
+    [acceptanceActivityId, activityName, String(data.description || '').trim(), account.username]
+  );
+  return { acceptance_activity_id: acceptanceActivityId };
+};
+
 ACTIONS.createAcceptance = async (pool, data) => {
   const { rows: accRows } = await pool.query('SELECT * FROM accounts WHERE username=$1', [data.creator_username]);
   const acc = accRows[0];
@@ -316,6 +339,55 @@ ACTIONS.listAcceptances = async (pool, data) => {
   if (data.role === 'Admin') return items;
   const subtree = await orgSubtreeUsernames(pool, data.username);
   return items.filter(m => subtree.has(m.creator_username));
+};
+
+// Báo cáo mức độ tham gia theo tháng: mỗi hoạt động Check in chỉ tính một lần
+// cho mỗi nhân viên (dù có cả check in và check out); nghiệm thu tính theo lần gửi.
+ACTIONS.getMonthlyActivityReport = async (pool, data) => {
+  const { rows: accountRows } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [data.username]);
+  const requester = accountRows[0];
+  if (!requester || !['SM', 'Admin'].includes(requester.role)) throw new Error('Vai trò không có quyền xem báo cáo.');
+
+  const month = /^\d{4}-\d{2}$/.test(data.month || '') ? data.month : nowVNParts().dateStr.slice(0, 7);
+  const start = `${month}-01`;
+  const { rows: accounts } = await pool.query('SELECT username, full_name, role FROM accounts WHERE active=true ORDER BY full_name, username');
+  let scopedUsers;
+  if (requester.role === 'Admin') {
+    scopedUsers = accounts.filter(a => a.role !== 'Admin');
+  } else {
+    const subtree = await orgSubtreeUsernames(pool, requester.username);
+    scopedUsers = accounts.filter(a => a.username !== requester.username && subtree.has(a.username));
+  }
+  if (!scopedUsers.length) return { month, rows: [] };
+
+  const usernames = scopedUsers.map(a => a.username);
+  const [checkins, acceptances] = await Promise.all([
+    pool.query(
+      `SELECT username, COUNT(DISTINCT checkpoint_id)::int AS total
+       FROM checkins
+       WHERE username = ANY($1) AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 month')
+       GROUP BY username`,
+      [usernames, start]
+    ),
+    pool.query(
+      `SELECT creator_username AS username, COUNT(*)::int AS total
+       FROM acceptances
+       WHERE creator_username = ANY($1) AND created_at >= $2::date AND created_at < ($2::date + INTERVAL '1 month')
+       GROUP BY creator_username`,
+      [usernames, start]
+    )
+  ]);
+  const checkinTotals = new Map(checkins.rows.map(r => [r.username, r.total]));
+  const acceptanceTotals = new Map(acceptances.rows.map(r => [r.username, r.total]));
+  return {
+    month,
+    rows: scopedUsers.map(a => ({
+      username: a.username,
+      full_name: a.full_name,
+      checkin_activities: checkinTotals.get(a.username) || 0,
+      acceptance_activities: acceptanceTotals.get(a.username) || 0
+    }))
+  };
 };
 
 ACTIONS.getAcceptanceById = async (pool, data) => {

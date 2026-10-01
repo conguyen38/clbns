@@ -77,9 +77,21 @@ CREATE TABLE IF NOT EXISTS acceptances (
   created_at          timestamptz NOT NULL DEFAULT now()
 );
 
+-- Danh mục hoạt động cần nghiệm thu do Admin tạo. Nhân viên chọn hoạt động
+-- trong danh sách rồi mới gửi ảnh/bằng chứng nghiệm thu.
+CREATE TABLE IF NOT EXISTS acceptance_activities (
+  acceptance_activity_id  text PRIMARY KEY,
+  activity_name           text NOT NULL,
+  description             text NOT NULL DEFAULT '',
+  created_by              text NOT NULL DEFAULT '',
+  active                  boolean NOT NULL DEFAULT true,
+  created_at              timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_checkins_username ON checkins(username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_creator ON acceptances(creator_username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_status ON acceptances(status);
+CREATE INDEX IF NOT EXISTS idx_acceptance_activities_active ON acceptance_activities(active);
 CREATE INDEX IF NOT EXISTS idx_accounts_manager ON accounts(manager_username);
 
 INSERT INTO accounts (username, password, full_name, role, manager_username, region_codes, active)
