@@ -338,6 +338,7 @@
     <button class="sb-link" data-nav="home" onclick="goHome()"><span class="sb-ic">🏠</span>Trang chủ</button>
     <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Check in</button>
     <button class="sb-link" data-nav="acceptance" onclick="goAcceptanceHome()"><span class="sb-ic">✅</span>Nghiệm thu</button>
+    <button class="sb-link" id="sidebar-report-link" data-nav="report" style="display:none;" onclick="goReport()"><span class="sb-ic">📊</span>Báo cáo</button>
     <button class="sb-link" id="sidebar-admin-link" data-nav="admin" style="display:none;" onclick="goAdmin()"><span class="sb-ic">⚙️</span>Quản trị</button>
   </div>
   <div class="sb-spacer"></div>
@@ -540,6 +541,16 @@
       <div class="tabs" id="acceptance-tabs"></div>
       <div id="acceptance-tab-content"></div>
     </div>
+  </div>
+
+  <!-- ===================== REPORT ===================== -->
+  <div class="screen" id="screen-report">
+    <div class="topbar">
+      <button class="back" onclick="goHome()">‹</button>
+      <div class="brand"><span class="name">BÁO CÁO</span><span class="sub">Hoạt động theo tháng</span></div>
+      <span></span>
+    </div>
+    <div style="padding-top:18px;" id="acceptance-report-content"></div>
   </div>
 
   <!-- ===================== ACCEPTANCE: new ===================== -->
@@ -837,6 +848,7 @@ const SIDEBAR_NAV_MAP = {
   'screen-home': 'home',
   'screen-sitetour-list': 'sitetour', 'screen-sitetour-create': 'sitetour', 'screen-sitetour-checkin': 'sitetour', 'screen-sitetour-result': 'sitetour', 'screen-sitetour-history': 'sitetour',
   'screen-acceptance-home': 'acceptance', 'screen-acceptance-new': 'acceptance', 'screen-acceptance-activity-new': 'acceptance', 'screen-acceptance-detail': 'acceptance',
+  'screen-report': 'report',
   'screen-admin': 'admin',
 };
 
@@ -854,6 +866,7 @@ function showScreen(id) {
   document.getElementById('sb-username').innerText = state.user.full_name || state.user.username;
   document.getElementById('sb-role').innerText = roleLabel(state.user.role);
   document.getElementById('sidebar-admin-link').style.display = state.user.role === 'Admin' ? 'flex' : 'none';
+  document.getElementById('sidebar-report-link').style.display = ['SM', 'Admin'].includes(state.user.role) ? 'flex' : 'none';
   document.getElementById('sidebar-switch-link').style.display = (state.user.role === 'Admin' || state.impersonatorAdmin) ? 'flex' : 'none';
   document.getElementById('sidebar-return-admin-link').style.display = state.impersonatorAdmin ? 'flex' : 'none';
   const activeNav = SIDEBAR_NAV_MAP[id];
@@ -1390,11 +1403,9 @@ function goAcceptanceHome() {
   // khỏi điều kiện này nên chỉ nhìn thấy tab "Lịch sử duyệt".
   const isCreator = ['SA', 'SM', 'Admin'].includes(state.user.role);
   const isApprover = state.user.role === 'SM';
-  const canViewReport = state.user.role === 'SM' || state.user.role === 'Admin';
   const tabs = [];
   if (isCreator) tabs.push({k:'new', label:'Hoạt động'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
-  if (canViewReport) tabs.push({k:'report', label:'Báo cáo'});
   tabs.push({k:'history', label:'Lịch sử duyệt'});
   state.acceptanceTab = tabs[0].k;
   document.getElementById('acceptance-tabs').innerHTML = tabs.map(t =>
@@ -1421,10 +1432,6 @@ async function renderAcceptanceTab() {
     renderAcceptanceActivities();
     return;
   }
-  if (state.acceptanceTab === 'report') {
-    renderAcceptanceReport();
-    return;
-  }
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   acceptanceRowsPage = 1;
   try {
@@ -1440,6 +1447,12 @@ async function renderAcceptanceTab() {
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }
+}
+
+function goReport() {
+  if (!state.user || !['SM', 'Admin'].includes(state.user.role)) { goHome(); return; }
+  showScreen('screen-report');
+  renderAcceptanceReport();
 }
 
 async function renderAcceptanceActivities() {
@@ -1489,7 +1502,7 @@ function setAcceptanceReportMonth(month) {
 }
 
 async function renderAcceptanceReport() {
-  const wrap = document.getElementById('acceptance-tab-content');
+  const wrap = document.getElementById('acceptance-report-content');
   wrap.innerHTML = `
     <div class="card admin-toolbar">
       <div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div><input type="month" value="${acceptanceReportMonth}" onchange="setAcceptanceReportMonth(this.value)"></div>
