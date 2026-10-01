@@ -290,8 +290,9 @@ ACTIONS.createAcceptance = async (pool, data) => {
   const acc = accRows[0];
   if (!acc) throw new Error('Không tìm thấy tài khoản.');
   if (!data.activity_name) throw new Error('Thiếu tên hoạt động.');
-  // SM là cấp quản lý cao nhất (không còn SSM) -> nghiệm thu do SM tự tạo coi như đã duyệt.
-  const status = acc.role === 'SM' ? 'Approved' : 'PendingSM';
+  // SM và Admin là các cấp cao nhất trong luồng hiện tại (không còn SSM),
+  // nên nghiệm thu do họ tự tạo được coi là đã duyệt.
+  const status = ['SM', 'Admin'].includes(acc.role) ? 'Approved' : 'PendingSM';
   const acceptanceId = require('crypto').randomUUID();
   await pool.query(
     `INSERT INTO acceptances (acceptance_id, acceptance_code, creator_username, creator_name, creator_role,

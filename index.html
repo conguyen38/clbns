@@ -1365,7 +1365,9 @@ function renderStHistory() {
    ACCEPTANCE (Nghiệm thu)
    ========================================================= */
 function goAcceptanceHome() {
-  const isCreator = state.user.role === 'SA' || state.user.role === 'SM';
+  // SA, SM và Admin đều có thể lập nghiệm thu. Trước đây Admin bị thiếu
+  // khỏi điều kiện này nên chỉ nhìn thấy tab "Lịch sử duyệt".
+  const isCreator = ['SA', 'SM', 'Admin'].includes(state.user.role);
   const isApprover = state.user.role === 'SM';
   const tabs = [];
   if (isCreator) tabs.push({k:'new', label:'Tạo mới'});
