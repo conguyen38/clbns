@@ -243,8 +243,8 @@
   @media (min-width:768px){
     .history-cards{display:none;}
     .dtable{display:table;}
-    .dtable thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1.5px solid var(--line);white-space:nowrap;}
-    .dtable tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2);vertical-align:middle;white-space:nowrap;}
+    .dtable thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1.5px solid var(--line);word-break:break-word;}
+    .dtable tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2);vertical-align:middle;word-break:break-word;}
     .dtable tbody tr:last-child td{border-bottom:none;}
     .dtable tbody tr:hover td{background:#F7F8F8;}
     .dtable td.num{text-align:right;}
@@ -1654,9 +1654,9 @@ function renderAccountsView() {
       <button class="btn btn-primary" onclick="acShowCreate()">+ Tạo tài khoản</button>
     </div>`;
   const acActions = a => `
-    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminAccounts('${a.username}')">Sửa</button>
-    <button class="btn btn-ghost" style="padding:0;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
-    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>`;
+    <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminAccounts('${a.username}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="toggleAccountActive('${a.username}', ${String(a.active).toUpperCase()!=='TRUE'})">${String(a.active).toUpperCase()==='TRUE'?'Khóa':'Mở lại'}</button>
+    <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAccount('${a.username}')">Xóa</button>`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + acPageInfo.pageRows.map(a => `
       <div class="row">
@@ -1806,8 +1806,8 @@ function renderRegionsView() {
       <button class="btn btn-primary" onclick="rgShowCreate()">+ Tạo vùng</button>
     </div>`;
   const rgActions = r => `
-    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminRegions('${r.region_code}')">Sửa</button>
-    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>`;
+    <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminRegions('${r.region_code}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteRegion('${r.region_code}')">Xóa</button>`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + rgPageInfo.pageRows.map(r => `
       <div class="row">
@@ -1910,8 +1910,8 @@ function renderBranchesView() {
       <button class="btn btn-primary" onclick="brShowCreate()">+ Tạo chi nhánh</button>
     </div>`;
   const brActions = b => `
-    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminBranchesTab('${b.branch_code}')">Sửa</button>
-    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>`;
+    <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminBranchesTab('${b.branch_code}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteBranch('${b.branch_code}')">Xóa</button>`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + brPageInfo.pageRows.map(b => `
       <div class="row">
@@ -2016,8 +2016,8 @@ function renderCheckpointsView() {
       <button class="btn btn-primary" onclick="cpShowCreate()">+ Tạo điểm checkin</button>
     </div>`;
   const cpActions = c => `
-    <button class="btn btn-ghost" style="padding:0;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
-    <button class="btn btn-ghost" style="padding:0;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>`;
+    <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="renderAdminCheckpoints('${c.checkpoint_id}')">Sửa</button>
+    <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteCheckpoint('${c.checkpoint_id}')">Xóa</button>`;
   const listHtml = filtered.length ? (
     '<div class="card history-cards">' + cpPageInfo.pageRows.map(c => `
       <div class="row">
