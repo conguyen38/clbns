@@ -66,12 +66,10 @@ ACTIONS.adminUpdateAccount = async (pool, data) => {
 };
 
 ACTIONS.changePassword = async (pool, data) => {
-  const { username, current_password, new_password } = data;
-  if (!username || !current_password || !new_password) throw new Error('Thiếu thông tin.');
-  const { rows } = await pool.query('SELECT password FROM accounts WHERE username=$1', [username]);
-  if (!rows[0]) throw new Error('Không tìm thấy tài khoản.');
-  if (String(rows[0].password) !== String(current_password)) throw new Error('Mật khẩu hiện tại không đúng.');
-  await pool.query('UPDATE accounts SET password=$2 WHERE username=$1', [username, new_password]);
+  const { username, new_password } = data;
+  if (!username || !new_password) throw new Error('Thiếu thông tin.');
+  const res = await pool.query('UPDATE accounts SET password=$2 WHERE username=$1', [username, new_password]);
+  if (!res.rowCount) throw new Error('Không tìm thấy tài khoản.');
   return { ok: true };
 };
 
