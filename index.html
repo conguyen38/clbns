@@ -256,7 +256,22 @@
        THU / TỔNG on wide screens. */
     .dtable th.num, .dtable td.num{text-align:left;}
     .dtable td.mono, .dtable td.nowrap{white-space:nowrap;}
+    .report-row{cursor:pointer;}
+    .report-row td:first-child::after{content:'⌄';display:inline-block;margin-left:8px;color:var(--slate);font-size:16px;transition:transform .15s ease;}
+    .report-row.open td:first-child::after{transform:rotate(180deg);}
+    .report-detail-row td{padding:0;background:#F7F8F8;}
   }
+  .report-progress{font-weight:700;color:var(--ink);}
+  .report-progress .total{color:var(--slate);font-weight:500;}
+  .report-detail{padding:16px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;background:#F7F8F8;}
+  .report-detail-group{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;}
+  .report-detail-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate);margin-bottom:8px;}
+  .report-detail-item{display:flex;align-items:flex-start;gap:8px;padding:8px 0;font-size:13px;border-top:1px solid var(--line);}
+  .report-detail-item:first-of-type{border-top:none;}
+  .report-detail-item .mark{width:18px;flex-shrink:0;font-weight:900;color:var(--green);}
+  .report-detail-item.missing .mark{color:var(--red);}
+  .report-detail-item .meta{font-size:11.5px;color:var(--slate);margin-top:2px;}
+  @media (max-width:767px){.report-detail{grid-template-columns:1fr;padding:12px;}.report-detail-item{font-size:12.5px;}}
 
   /* Checkpoint pick list */
   .pick{display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid var(--line);border-radius:11px;margin-bottom:10px;cursor:pointer;background:#fff;}
@@ -324,6 +339,16 @@
   .admin-toolbar input{flex:1;min-width:160px;margin:0;}
   .admin-toolbar .btn{width:auto;white-space:nowrap;padding:12px 18px;margin:0;}
   .admin-toolbar select, .admin-toolbar .cs-wrap{width:auto;min-width:150px;flex-shrink:0;}
+
+  /* Activity lists: keep creation and search easy to reach on mobile, then
+     place them on one compact row once there is horizontal space. */
+  .activity-toolbar{display:flex;flex-direction:column;gap:14px;margin-bottom:14px;}
+  .activity-toolbar input{flex:1;margin:0!important;}
+  .activity-toolbar .btn{order:-1;margin:0!important;}
+  @media (min-width:768px){
+    .activity-toolbar{flex-direction:row;align-items:center;}
+    .activity-toolbar .btn{order:0;width:auto;flex-shrink:0;padding:12px 18px;white-space:nowrap;}
+  }
 
   .loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;}
   @keyframes spin{to{transform:rotate(360deg);}}
@@ -427,8 +452,10 @@
     </div>
     <div style="padding-top:18px;">
       <div id="st-list-banner"></div>
-      <button class="btn btn-primary" id="st-create-activity-btn" style="display:none;margin-bottom:14px;" onclick="goSitetourCreateActivity()">+ Tạo hoạt động</button>
-      <input id="st-search-input" placeholder="🔍 Tìm theo tên hoạt động, địa chỉ..." style="margin-bottom:14px;" oninput="stCheckpointSetSearch(this.value)">
+      <div class="activity-toolbar">
+        <input id="st-search-input" placeholder="🔍 Tìm theo tên hoạt động, địa chỉ..." oninput="stCheckpointSetSearch(this.value)">
+        <button class="btn btn-primary" id="st-create-activity-btn" style="display:none;" onclick="goSitetourCreateActivity()">+ Tạo hoạt động</button>
+      </div>
       <div id="st-checkpoint-list" class="pick-grid"></div>
     </div>
   </div>
@@ -1440,7 +1467,9 @@ let acceptanceRowsPage = 1;
 let acceptanceRowsIsApproval = false;
 let acceptanceRowsContainerId = 'acceptance-tab-content';
 let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
+let acceptanceReportOpenUsername = null;
 let acceptanceActivitiesCache = [];
+let acceptanceActivitySearch = '';
 let acceptanceSelectedActivityId = null;
 let acceptanceSelectedActivityName = '';
 let editingAcceptanceActivityId = null;
@@ -1493,22 +1522,41 @@ function goReport() {
 
 async function renderAcceptanceActivities() {
   const wrap = document.getElementById('acceptance-tab-content');
-  const canCreate = state.user.role === 'Admin';
-  wrap.innerHTML = `<div id="nt-activities-banner"></div>${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="loading-block"><div class="spin"></div></div>`;
+  wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     acceptanceActivitiesCache = await api('listAcceptanceActivities', { username: state.user.username });
-    if (!acceptanceActivitiesCache.length) {
-      wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="empty"><div class="big">📭</div>Chưa có hoạt động nghiệm thu nào.</div>`;
-      return;
-    }
-    wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
+    renderAcceptanceActivitiesView();
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+function setAcceptanceActivitySearch(value) {
+  acceptanceActivitySearch = value;
+  rerenderPreservingFocus(renderAcceptanceActivitiesView);
+}
+
+function renderAcceptanceActivitiesView() {
+  const wrap = document.getElementById('acceptance-tab-content');
+  const canCreate = state.user.role === 'Admin';
+  const activities = filterRows(acceptanceActivitiesCache, acceptanceActivitySearch, ['activity_name', 'description']);
+  const toolbar = `<div class="activity-toolbar">
+    <input id="nt-activity-search" placeholder="🔍 Tìm theo tên hoạt động..." value="${acceptanceActivitySearch}" oninput="setAcceptanceActivitySearch(this.value)">
+    ${canCreate ? '<button class="btn btn-primary" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}
+  </div>`;
+  if (!acceptanceActivitiesCache.length) {
+    wrap.innerHTML = `${toolbar}<div class="empty"><div class="big">📭</div>Chưa có hoạt động nghiệm thu nào.</div>`;
+    return;
+  }
+  if (!activities.length) {
+    wrap.innerHTML = `${toolbar}<div class="empty">Không tìm thấy hoạt động nào khớp.</div>`;
+    return;
+  }
+  wrap.innerHTML = `${toolbar}<div class="card">${activities.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
         <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
         <div class="r">${canCreate ? `<div style="display:flex;gap:12px;"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : '<span class="chev">›</span>'}</div>
       </div>`).join('')}</div>`;
-  } catch (e) {
-    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
-  }
 }
 
 function fmtDateTimeLocal(value) {
@@ -1586,16 +1634,69 @@ function setAcceptanceReportMonth(month) {
   renderAcceptanceReport();
 }
 
+function reportMonthPickerHtml(selectedMonth) {
+  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+  const selectedYear = Number((selectedMonth || '').slice(0, 4)) || new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
+  const firstYear = Math.min(selectedYear, currentYear - 2);
+  const lastYear = Math.max(selectedYear, currentYear + 1);
+  const options = [];
+  for (let year = lastYear; year >= firstYear; year--) {
+    for (let month = 12; month >= 1; month--) {
+      const value = `${year}-${String(month).padStart(2, '0')}`;
+      options.push(`<option value="${value}" ${value === selectedMonth ? 'selected' : ''}>${monthNames[month - 1]} năm ${year}</option>`);
+    }
+  }
+  return `<select id="report-month" onchange="setAcceptanceReportMonth(this.value)">${options.join('')}</select>`;
+}
+
+function buildReportMonthPicker() {
+  buildCustomSelect(document.getElementById('report-month'));
+}
+
+function reportProgress(done, total) {
+  return `<span class="report-progress">${done}<span class="total"> / ${total}</span></span>`;
+}
+
+function renderReportDetails(detail) {
+  const activityItem = (activity, kind) => {
+    const done = activity.completed;
+    const status = kind === 'checkin'
+      ? (activity.action_type === 'checkout' ? 'Đã check out' : 'Đã check in')
+      : (activity.status ? statusLabel(activity.status) : 'Đã gửi');
+    return `<div class="report-detail-item ${done ? '' : 'missing'}">
+      <span class="mark">${done ? '✓' : '!'}</span>
+      <div><b>${activity.checkpoint_name || activity.activity_name}</b>
+      <div class="meta">${done ? `${status} · ${fmtDate(activity.recorded_at)}` : 'Chưa ghi nhận — cần nhắc'}</div></div>
+    </div>`;
+  };
+  const checkinDone = detail.checkins.filter(activity => activity.completed).length;
+  const acceptanceDone = detail.acceptances.filter(activity => activity.completed).length;
+  return `<div class="report-detail">
+    <div class="report-detail-group"><div class="report-detail-title">Check in đã ghi nhận (${checkinDone}/${detail.checkins.length})</div>${detail.checkins.length ? detail.checkins.map(activity => activityItem(activity, 'checkin')).join('') : '<div class="hint">Không có hoạt động Check in trong tháng.</div>'}</div>
+    <div class="report-detail-group"><div class="report-detail-title">Nghiệm thu đã ghi nhận (${acceptanceDone}/${detail.acceptances.length})</div>${detail.acceptances.length ? detail.acceptances.map(activity => activityItem(activity, 'acceptance')).join('') : '<div class="hint">Không có hoạt động nghiệm thu trong tháng.</div>'}</div>
+  </div>`;
+}
+
+function toggleAcceptanceReportDetails(encodedUsername) {
+  const username = decodeURIComponent(encodedUsername);
+  acceptanceReportOpenUsername = acceptanceReportOpenUsername === username ? null : username;
+  renderAcceptanceReport();
+}
+
 async function renderAcceptanceReport() {
   const wrap = document.getElementById('acceptance-report-content');
   wrap.innerHTML = `
     <div class="card admin-toolbar">
-      <div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div><input type="month" value="${acceptanceReportMonth}" onchange="setAcceptanceReportMonth(this.value)"></div>
+      <div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div>${reportMonthPickerHtml(acceptanceReportMonth)}</div>
     </div>
     <div class="loading-block"><div class="spin"></div></div>`;
+  buildReportMonthPicker();
   try {
     const report = await api('getMonthlyActivityReport', { username: state.user.username, month: acceptanceReportMonth });
     const rows = report.rows || [];
+    const openUsername = acceptanceReportOpenUsername;
+    const openDetail = openUsername ? await api('getMonthlyActivityReportDetails', { username: state.user.username, month: report.month, target_username: openUsername }) : null;
     const totalCheckins = rows.reduce((sum, r) => sum + Number(r.checkin_activities || 0), 0);
     const totalAcceptances = rows.reduce((sum, r) => sum + Number(r.acceptance_activities || 0), 0);
     const scopeLabel = state.user.role === 'SM' ? 'Nhân viên thuộc phạm vi quản lý' : 'Toàn bộ nhân viên';
@@ -1603,14 +1704,25 @@ async function renderAcceptanceReport() {
       wrap.innerHTML = `<div class="card"><div class="eyebrow">${scopeLabel}</div><div class="empty"><div class="big">📊</div>Chưa có nhân viên trong phạm vi báo cáo.</div></div>`;
       return;
     }
-    const tableRows = rows.map(r => `<tr><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${r.checkin_activities}</td><td class="num mono">${r.acceptance_activities}</td><td class="num mono"><b>${Number(r.checkin_activities) + Number(r.acceptance_activities)}</b></td></tr>`).join('');
-    const cards = rows.map(r => `<div class="row"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username}</div></div><div class="r mono" style="text-align:right;"><b>${Number(r.checkin_activities) + Number(r.acceptance_activities)}</b><div class="s">Check in ${r.checkin_activities} · Nghiệm thu ${r.acceptance_activities}</div></div></div>`).join('');
+    const tableRows = rows.map(r => {
+      const isOpen = r.username === openUsername;
+      const encodedUsername = encodeURIComponent(r.username);
+      const totalDone = Number(r.checkin_activities) + Number(r.acceptance_activities);
+      const totalExpected = Number(r.checkin_total) + Number(r.acceptance_total);
+      return `<tr class="report-row ${isOpen ? 'open' : ''}" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${reportProgress(r.checkin_activities, r.checkin_total)}</td><td class="num mono">${reportProgress(r.acceptance_activities, r.acceptance_total)}</td><td class="num mono">${reportProgress(totalDone, totalExpected)}</td></tr>${isOpen ? `<tr class="report-detail-row"><td colspan="4">${renderReportDetails(openDetail)}</td></tr>` : ''}`;
+    }).join('');
+    const cards = rows.map(r => {
+      const isOpen = r.username === openUsername;
+      const encodedUsername = encodeURIComponent(r.username);
+      return `<div class="row" style="cursor:pointer;" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username} · Check in ${r.checkin_activities}/${r.checkin_total} · Nghiệm thu ${r.acceptance_activities}/${r.acceptance_total}</div></div><div class="r">${isOpen ? '⌃' : '⌄'}</div></div>${isOpen ? renderReportDetails(openDetail) : ''}`;
+    }).join('');
     wrap.innerHTML = `
-      <div class="card admin-toolbar"><div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div><input type="month" value="${report.month}" onchange="setAcceptanceReportMonth(this.value)"></div></div>
+      <div class="card admin-toolbar"><div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div>${reportMonthPickerHtml(report.month)}</div></div>
       <div class="hint" style="margin:14px 0 10px;">${scopeLabel} · Check in tính theo hoạt động khác nhau; Nghiệm thu tính theo lần gửi.</div>
       <div class="btn-row" style="margin:0 0 14px;"><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Hoạt động Check in</div><div style="font-size:24px;font-weight:800;">${totalCheckins}</div></div><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Lần nghiệm thu</div><div style="font-size:24px;font-weight:800;">${totalAcceptances}</div></div></div>
       <div class="card history-cards">${cards}</div>
       <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+    buildReportMonthPicker();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
   }

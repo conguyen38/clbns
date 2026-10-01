@@ -384,40 +384,74 @@ ACTIONS.listAcceptances = async (pool, data) => {
   return items.filter(m => subtree.has(m.creator_username));
 };
 
-// Báo cáo mức độ tham gia theo tháng: mỗi hoạt động Check in chỉ tính một lần
-// cho mỗi nhân viên (dù có cả check in và check out); nghiệm thu tính theo lần gửi.
-ACTIONS.getMonthlyActivityReport = async (pool, data) => {
-  const { rows: accountRows } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [data.username]);
+function reportMonthBounds(month) {
+  const normalizedMonth = /^\d{4}-\d{2}$/.test(month || '') ? month : nowVNParts().dateStr.slice(0, 7);
+  const [year, monthNumber] = normalizedMonth.split('-').map(Number);
+  const end = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
+  return { month: normalizedMonth, start: `${normalizedMonth}-01`, end };
+}
+
+async function getReportScope(pool, username) {
+  const { rows: accountRows } = await pool.query('SELECT username, role FROM accounts WHERE username=$1', [username]);
   const requester = accountRows[0];
   if (!requester || !['SM', 'Admin'].includes(requester.role)) throw new Error('Vai trò không có quyền xem báo cáo.');
 
-  const month = /^\d{4}-\d{2}$/.test(data.month || '') ? data.month : nowVNParts().dateStr.slice(0, 7);
-  const start = `${month}-01`;
   const { rows: accounts } = await pool.query('SELECT username, full_name, role FROM accounts WHERE active=true ORDER BY full_name, username');
-  let scopedUsers;
   if (requester.role === 'Admin') {
-    scopedUsers = accounts.filter(a => a.role !== 'Admin');
-  } else {
-    const subtree = await orgSubtreeUsernames(pool, requester.username);
-    scopedUsers = accounts.filter(a => a.username !== requester.username && subtree.has(a.username));
+    return { requester, users: accounts.filter(a => a.role !== 'Admin') };
   }
+  const subtree = await orgSubtreeUsernames(pool, requester.username);
+  return { requester, users: accounts.filter(a => a.username !== requester.username && subtree.has(a.username)) };
+}
+
+async function getExpectedMonthlyActivities(pool, start, end) {
+  const [checkpoints, acceptanceActivities] = await Promise.all([
+    pool.query(
+      `SELECT checkpoint_id, checkpoint_name
+       FROM checkpoints
+       WHERE (event_start IS NULL OR event_start < $2::date)
+         AND (event_end IS NULL OR event_end >= $1::date)
+       ORDER BY checkpoint_name`,
+      [start, end]
+    ),
+    pool.query(
+      `SELECT acceptance_activity_id, activity_name, description
+       FROM acceptance_activities
+       WHERE record_start < $2::timestamptz AND record_end >= $1::timestamptz
+       ORDER BY activity_name`,
+      [start, end]
+    )
+  ]);
+  return { checkpoints: checkpoints.rows, acceptanceActivities: acceptanceActivities.rows };
+}
+
+// Báo cáo mức độ tham gia theo tháng: hoạt động hoàn thành được đặt cạnh tổng
+// hoạt động cần làm trong tháng, để quản lý nhìn ra ngay nhân viên cần nhắc.
+ACTIONS.getMonthlyActivityReport = async (pool, data) => {
+  const { month, start, end } = reportMonthBounds(data.month);
+  const { users: scopedUsers } = await getReportScope(pool, data.username);
   if (!scopedUsers.length) return { month, rows: [] };
 
   const usernames = scopedUsers.map(a => a.username);
+  const { checkpoints, acceptanceActivities } = await getExpectedMonthlyActivities(pool, start, end);
+  const checkpointIds = checkpoints.map(a => a.checkpoint_id);
+  const acceptanceActivityIds = acceptanceActivities.map(a => a.acceptance_activity_id);
   const [checkins, acceptances] = await Promise.all([
     pool.query(
       `SELECT username, COUNT(DISTINCT checkpoint_id)::int AS total
        FROM checkins
-       WHERE username = ANY($1) AND timestamp >= $2::date AND timestamp < ($2::date + INTERVAL '1 month')
+       WHERE username = ANY($1) AND timestamp >= $2::date AND timestamp < $3::date
+         AND checkpoint_id = ANY($4::text[])
        GROUP BY username`,
-      [usernames, start]
+      [usernames, start, end, checkpointIds]
     ),
     pool.query(
-      `SELECT creator_username AS username, COUNT(*)::int AS total
+      `SELECT creator_username AS username, COUNT(DISTINCT acceptance_activity_id)::int AS total
        FROM acceptances
-       WHERE creator_username = ANY($1) AND created_at >= $2::date AND created_at < ($2::date + INTERVAL '1 month')
+       WHERE creator_username = ANY($1) AND created_at >= $2::date AND created_at < $3::date
+         AND acceptance_activity_id = ANY($4::text[])
        GROUP BY creator_username`,
-      [usernames, start]
+      [usernames, start, end, acceptanceActivityIds]
     )
   ]);
   const checkinTotals = new Map(checkins.rows.map(r => [r.username, r.total]));
@@ -428,8 +462,53 @@ ACTIONS.getMonthlyActivityReport = async (pool, data) => {
       username: a.username,
       full_name: a.full_name,
       checkin_activities: checkinTotals.get(a.username) || 0,
-      acceptance_activities: acceptanceTotals.get(a.username) || 0
+      checkin_total: checkpoints.length,
+      acceptance_activities: acceptanceTotals.get(a.username) || 0,
+      acceptance_total: acceptanceActivities.length
     }))
+  };
+};
+
+ACTIONS.getMonthlyActivityReportDetails = async (pool, data) => {
+  const { month, start, end } = reportMonthBounds(data.month);
+  const { users } = await getReportScope(pool, data.username);
+  const target = users.find(user => user.username === data.target_username);
+  if (!target) throw new Error('Nhân viên không thuộc phạm vi báo cáo.');
+
+  const { checkpoints, acceptanceActivities } = await getExpectedMonthlyActivities(pool, start, end);
+  const [checkinRows, acceptanceRows] = await Promise.all([
+    pool.query(
+      `SELECT checkpoint_id, action_type, timestamp
+       FROM checkins
+       WHERE username=$1 AND timestamp >= $2::date AND timestamp < $3::date
+       ORDER BY timestamp DESC`,
+      [target.username, start, end]
+    ),
+    pool.query(
+      `SELECT acceptance_activity_id, status, created_at
+       FROM acceptances
+       WHERE creator_username=$1 AND created_at >= $2::date AND created_at < $3::date
+         AND acceptance_activity_id IS NOT NULL
+       ORDER BY created_at DESC`,
+      [target.username, start, end]
+    )
+  ]);
+  const latestCheckin = new Map();
+  checkinRows.rows.forEach(row => { if (!latestCheckin.has(row.checkpoint_id)) latestCheckin.set(row.checkpoint_id, row); });
+  const latestAcceptance = new Map();
+  acceptanceRows.rows.forEach(row => { if (!latestAcceptance.has(row.acceptance_activity_id)) latestAcceptance.set(row.acceptance_activity_id, row); });
+
+  return {
+    month,
+    user: target,
+    checkins: checkpoints.map(activity => {
+      const record = latestCheckin.get(activity.checkpoint_id);
+      return { ...activity, completed: !!record, recorded_at: record ? record.timestamp : null, action_type: record ? record.action_type : null };
+    }),
+    acceptances: acceptanceActivities.map(activity => {
+      const record = latestAcceptance.get(activity.acceptance_activity_id);
+      return { ...activity, completed: !!record, recorded_at: record ? record.created_at : null, status: record ? record.status : null };
+    })
   };
 };
 
