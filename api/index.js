@@ -272,7 +272,7 @@ ACTIONS.listCheckins = async (pool, data) => {
     const { rows } = await pool.query(`SELECT ${CHECKIN_LIST_COLUMNS} FROM checkins ORDER BY timestamp DESC`);
     return rows;
   }
-  if (data.role === 'SM' || data.role === 'SSM') {
+  if (data.role === 'SM') {
     const subtree = await orgSubtreeUsernames(pool, data.username);
     const { rows } = await pool.query(`SELECT ${CHECKIN_LIST_COLUMNS} FROM checkins ORDER BY timestamp DESC`);
     return rows.filter(r => subtree.has(r.username));
@@ -290,7 +290,8 @@ ACTIONS.createAcceptance = async (pool, data) => {
   const acc = accRows[0];
   if (!acc) throw new Error('Không tìm thấy tài khoản.');
   if (!data.activity_name) throw new Error('Thiếu tên hoạt động.');
-  const status = acc.role === 'SM' ? 'PendingSSM' : 'PendingSM';
+  // SM là cấp quản lý cao nhất (không còn SSM) -> nghiệm thu do SM tự tạo coi như đã duyệt.
+  const status = acc.role === 'SM' ? 'Approved' : 'PendingSM';
   const acceptanceId = require('crypto').randomUUID();
   await pool.query(
     `INSERT INTO acceptances (acceptance_id, acceptance_code, creator_username, creator_name, creator_role,
@@ -306,17 +307,7 @@ ACTIONS.listAcceptancesForApproval = async (pool, data) => {
   const { rows: accounts } = await pool.query('SELECT * FROM accounts');
   const { rows: items } = await pool.query(`SELECT ${ACCEPTANCE_LIST_COLUMNS} FROM acceptances ORDER BY created_at DESC`);
   const directReports = new Set(accounts.filter(a => a.manager_username === data.username).map(a => a.username));
-  return items.filter(m => {
-    if (m.status === 'PendingSM') return directReports.has(m.creator_username);
-    if (m.status === 'PendingSSM') {
-      const creator = accounts.find(a => a.username === m.creator_username);
-      if (!creator) return false;
-      if (creator.role === 'SM') return creator.manager_username === data.username;
-      const smManager = accounts.find(a => a.username === creator.manager_username);
-      return !!smManager && smManager.manager_username === data.username;
-    }
-    return false;
-  });
+  return items.filter(m => m.status === 'PendingSM' && directReports.has(m.creator_username));
 };
 
 ACTIONS.listAcceptances = async (pool, data) => {
@@ -339,11 +330,7 @@ ACTIONS.approveAcceptance = async (pool, data) => {
   if (data.role === 'SM') {
     if (m.status !== 'PendingSM') throw new Error('Hoạt động không ở trạng thái chờ SM duyệt.');
     await pool.query('UPDATE acceptances SET status=$2, sm_note=$3 WHERE acceptance_id=$1',
-      [data.acceptance_id, data.decision === 'approve' ? 'PendingSSM' : 'RejectedSM', data.note || '']);
-  } else if (data.role === 'SSM') {
-    if (m.status !== 'PendingSSM') throw new Error('Hoạt động không ở trạng thái chờ SSM duyệt.');
-    await pool.query('UPDATE acceptances SET status=$2, ssm_note=$3 WHERE acceptance_id=$1',
-      [data.acceptance_id, data.decision === 'approve' ? 'Approved' : 'RejectedSSM', data.note || '']);
+      [data.acceptance_id, data.decision === 'approve' ? 'Approved' : 'RejectedSM', data.note || '']);
   } else {
     throw new Error('Vai trò không có quyền duyệt.');
   }

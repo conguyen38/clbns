@@ -357,7 +357,7 @@
       <div class="login-brandpane">
         <div class="lb-title">PROAGENT</div>
         <div class="lb-sub">Tracking Platform</div>
-        <div class="lb-desc">Nền tảng ghi nhận hoạt động thực địa — checkin điểm chỉ định bằng GPS &amp; ảnh, lập và duyệt biên bản gặp đối tác theo phân cấp SA → SM → SSM.</div>
+        <div class="lb-desc">Nền tảng ghi nhận hoạt động thực địa — checkin điểm chỉ định bằng GPS &amp; ảnh, lập và duyệt biên bản gặp đối tác theo phân cấp SA → SM.</div>
       </div>
       <div class="login-formpane">
         <div style="text-align:center;margin-bottom:34px;" class="login-mobile-brand">
@@ -961,7 +961,7 @@ function goHome() {
 }
 
 function roleLabel(r) {
-  return { Admin: 'Quản trị viên', SA: 'Sales Agent', SM: 'Sales Manager', SSM: 'Senior Sales Manager' }[r] || r;
+  return { Admin: 'Quản trị viên', SA: 'Sales Agent', SM: 'Sales Manager' }[r] || r;
 }
 
 /* On load */
@@ -1366,7 +1366,7 @@ function renderStHistory() {
    ========================================================= */
 function goAcceptanceHome() {
   const isCreator = state.user.role === 'SA' || state.user.role === 'SM';
-  const isApprover = state.user.role === 'SM' || state.user.role === 'SSM';
+  const isApprover = state.user.role === 'SM';
   const tabs = [];
   if (isCreator) tabs.push({k:'new', label:'Tạo mới'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
@@ -1536,8 +1536,8 @@ async function openAcceptanceDetail(id) {
   try {
     const m = await api('getAcceptanceById', { acceptance_id: id });
     currentAcceptanceDetail = m;
-    const canApprove = (state.user.role === 'SM' && m.status === 'PendingSM') || (state.user.role === 'SSM' && m.status === 'PendingSSM');
-    const canResubmit = (m.status === 'RejectedSM' || m.status === 'RejectedSSM') && m.creator_username === state.user.username;
+    const canApprove = state.user.role === 'SM' && m.status === 'PendingSM';
+    const canResubmit = m.status === 'RejectedSM' && m.creator_username === state.user.username;
     body.innerHTML = `
       <div class="card">
         <span class="badge ${String(m.status).toLowerCase()}">${statusLabel(m.status)}</span>
@@ -1547,7 +1547,6 @@ async function openAcceptanceDetail(id) {
         ${m.description ? `<label style="margin-top:0;">Mô tả</label><div>${m.description}</div>` : ''}
         ${m.screenshot_url ? `<label>Ảnh chụp màn hình</label><img class="photo-preview" style="cursor:pointer;" src="${m.screenshot_url}" onclick="openLightbox('${m.screenshot_url.replace(/'/g,"\\'")}')">` : ''}
         ${m.sm_note ? `<label>Ghi chú SM</label><div>${m.sm_note}</div>` : ''}
-        ${m.ssm_note ? `<label>Ghi chú SSM</label><div>${m.ssm_note}</div>` : ''}
         ${m.resubmitted_from ? `<div class="hint" style="margin-top:10px;">Được tạo lại từ nghiệm thu <span class="mono">${m.resubmitted_from}</span></div>` : ''}
       </div>
       ${canApprove ? `
@@ -1611,8 +1610,7 @@ function switchAdminTab(tab) {
   if (tab === 'checkpoints') renderAdminCheckpoints();
 }
 
-// Phân cấp cố định: SSM > SM > SA. SM chỉ report cho SSM (không report cho SM khác).
-// SA chỉ report cho đúng 1 SM.
+// Phân cấp cố định: SM > SA. SA chỉ report cho đúng 1 SM. SM không có quản lý trực tiếp.
 let adminAccountsCache = [];
 let editingAccountUsername = null;
 let acPage = 1;
@@ -1656,7 +1654,6 @@ function renderAccountsView() {
         <select id="ac-role" onchange="toggleAccountFields()">
           <option value="SA">SA — Sales Agent</option>
           <option value="SM">SM — Sales Manager</option>
-          <option value="SSM">SSM — Senior Sales Manager</option>
           <option value="Admin">Admin</option>
         </select>
         <div id="ac-manager-field">
@@ -1697,7 +1694,6 @@ function renderAccountsView() {
         <option value="">Tất cả vai trò</option>
         <option value="SA">SA — Sales Agent</option>
         <option value="SM">SM — Sales Manager</option>
-        <option value="SSM">SSM — Senior Sales Manager</option>
         <option value="Admin">Admin</option>
       </select>
       <select id="ac-region-filter" onchange="acSetRegionFilter(this.value)">
@@ -1740,7 +1736,7 @@ function renderAccountsView() {
 
 function toggleAccountFields() {
   const role = document.getElementById('ac-role').value;
-  const showManager = (role === 'SA' || role === 'SM');
+  const showManager = role === 'SA';
   document.getElementById('ac-manager-field').style.display = showManager ? 'block' : 'none';
 
   const showRegion = (role === 'SA' || role === 'SM');
@@ -1751,9 +1747,9 @@ function toggleAccountFields() {
   }
   if (!showManager) return;
 
-  const managerRole = role === 'SA' ? 'SM' : 'SSM';
+  const managerRole = 'SM';
   const candidates = adminAccountsCache.filter(a => a.role === managerRole && String(a.active).toUpperCase() === 'TRUE');
-  document.getElementById('ac-manager-label').innerText = role === 'SA' ? 'SM quản lý trực tiếp' : 'SSM quản lý trực tiếp';
+  document.getElementById('ac-manager-label').innerText = 'SM quản lý trực tiếp';
   document.getElementById('ac-manager-hint').innerText = candidates.length ? '' : `Chưa có tài khoản ${managerRole} nào — tạo ${managerRole} trước khi tạo ${role}.`;
   const sel = document.getElementById('ac-manager');
   sel.innerHTML = candidates.length
