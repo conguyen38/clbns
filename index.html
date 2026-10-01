@@ -143,8 +143,11 @@
   label.step-label{font-size:17px;font-weight:700;color:var(--ink);margin:22px 0 10px;}
   input,select,textarea{width:100%;padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:15px;font-family:'Roboto',sans-serif;color:var(--ink-2);}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
+  input.field-error{border-color:var(--red);}
+  input.field-error:focus{outline-color:var(--red);border-color:var(--red);}
   textarea{resize:vertical;min-height:70px;}
   .hint{font-size:11.5px;color:var(--slate);margin-top:8px;line-height:1.5;}
+  .field-warning{min-height:18px;margin-top:5px;color:var(--red);font-size:11.5px;line-height:1.4;}
 
   /* Select — flat theme chevron instead of the OS default */
   select{
@@ -248,7 +251,10 @@
     .dtable tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--ink-2);vertical-align:middle;word-break:break-word;}
     .dtable tbody tr:last-child td{border-bottom:none;}
     .dtable tbody tr:hover td{background:#F7F8F8;}
-    .dtable td.num{text-align:right;}
+    /* Keep numerical cells aligned with their column labels.  Right-aligned
+       figures made the report values look detached from CHECK IN / NGHIỆM
+       THU / TỔNG on wide screens. */
+    .dtable th.num, .dtable td.num{text-align:left;}
     .dtable td.mono, .dtable td.nowrap{white-space:nowrap;}
   }
 
@@ -599,8 +605,8 @@
         <input id="nta-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage">
         <label>Thời gian ghi nhận nghiệm thu</label>
         <div class="btn-row" style="margin-top:0;">
-          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Từ ngày, giờ</div><input id="nta-start" type="datetime-local"></div>
-          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Đến ngày, giờ</div><input id="nta-end" type="datetime-local"></div>
+          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Từ ngày, giờ</div><input id="nta-start" type="datetime-local" onchange="validateAcceptanceActivityPeriod()" oninput="validateAcceptanceActivityPeriod()"></div>
+          <div style="flex:1;"><div class="hint" style="margin:0 0 5px;">Đến ngày, giờ</div><input id="nta-end" type="datetime-local" onchange="validateAcceptanceActivityPeriod()" oninput="validateAcceptanceActivityPeriod()"><div class="field-warning" id="nta-period-warning" role="alert" aria-live="polite"></div></div>
         </div>
         <label>Mô tả / hướng dẫn</label>
         <textarea id="nta-description" placeholder="Nêu yêu cầu hoặc bằng chứng cần nộp..."></textarea>
@@ -1519,7 +1525,22 @@ function goAcceptanceActivityNew(editId) {
   document.getElementById('nta-end').value = activity ? fmtDateTimeLocal(activity.record_end) : '';
   document.getElementById('nta-description').value = activity ? (activity.description || '') : '';
   banner('nta-banner', '', '');
+  validateAcceptanceActivityPeriod();
   showScreen('screen-acceptance-activity-new');
+}
+
+function validateAcceptanceActivityPeriod() {
+  const start = document.getElementById('nta-start');
+  const end = document.getElementById('nta-end');
+  const warning = document.getElementById('nta-period-warning');
+  // Let the picker guide users as well as showing a clear message for values
+  // typed or pasted manually.
+  end.min = start.value || '';
+  const invalid = !!(start.value && end.value && new Date(end.value) <= new Date(start.value));
+  end.classList.toggle('field-error', invalid);
+  end.setAttribute('aria-invalid', String(invalid));
+  warning.textContent = invalid ? 'Thời gian kết thúc phải sau thời gian bắt đầu.' : '';
+  return !invalid;
 }
 
 function editAcceptanceActivity(id, evt) {
@@ -1534,7 +1555,7 @@ async function saveAcceptanceActivity(evt) {
   const recordStart = document.getElementById('nta-start').value;
   const recordEnd = document.getElementById('nta-end').value;
   if (!recordStart || !recordEnd) { banner('nta-banner', 'err', 'Vui lòng nhập đủ thời gian bắt đầu và kết thúc.'); return; }
-  if (new Date(recordEnd) <= new Date(recordStart)) { banner('nta-banner', 'err', 'Thời gian kết thúc phải sau thời gian bắt đầu.'); return; }
+  if (!validateAcceptanceActivityPeriod()) { return; }
   btn.disabled = true;
   try {
     const payload = { username: state.user.username, activity_name: activityName, record_start: new Date(recordStart).toISOString(), record_end: new Date(recordEnd).toISOString(), description: document.getElementById('nta-description').value.trim() };
