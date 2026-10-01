@@ -581,12 +581,12 @@
       <label style="margin-top:0;">Tên hoạt động</label>
       <input id="nt-activity-name" placeholder="vd: Đăng bài giới thiệu sản phẩm lên fanpage" oninput="checkAcceptanceSubmitReady()">
 
-      <label>Mô tả (không bắt buộc)</label>
-      <textarea id="nt-description" placeholder="Mô tả thêm về hoạt động..."></textarea>
+      <label>Ghi chú (không bắt buộc)</label>
+      <textarea id="nt-description" placeholder="Nhập ghi chú nếu cần..."></textarea>
 
       <label>Ảnh chụp màn hình</label>
-      <input type="file" accept="image/*" id="nt-photo-input" onchange="onAcceptancePhotoSelected(event)" style="display:none;">
-      <label for="nt-photo-input" class="btn btn-outline" style="margin-top:0;">📷 Chọn ảnh chụp màn hình</label>
+      <input type="file" accept="image/png,image/jpeg,image/webp" id="nt-photo-input" onchange="onAcceptancePhotoSelected(event)" style="display:none;">
+      <label for="nt-photo-input" class="btn btn-outline" style="margin-top:0;">🖼️ Chọn ảnh chụp màn hình</label>
       <div class="hint" id="nt-photo-filename">Chưa chọn ảnh</div>
       <img id="nt-photo-preview" class="photo-preview" style="display:none;">
 
@@ -1619,7 +1619,8 @@ function goAcceptanceNewForm(prefill) {
     banner('nt-banner','info',`Đang tạo lại từ hoạt động bị từ chối <b>${prefill.acceptance_code || prefill.acceptance_id}</b> — thông tin cũ đã được điền sẵn, chị chỉ cần chỉnh sửa phần cần thiết.`);
   }
   document.getElementById('nt-activity-name').value = prefill ? (prefill.activity_name || '') : '';
-  document.getElementById('nt-description').value = prefill ? (prefill.description || '') : '';
+  // Mô tả của hoạt động là hướng dẫn từ Admin, không tự điền vào ghi chú của người gửi.
+  document.getElementById('nt-description').value = isResubmission ? (prefill.description || '') : '';
 }
 
 function onAcceptancePhotoSelected(evt) {
