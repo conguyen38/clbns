@@ -58,7 +58,7 @@
     /* Topbar becomes an inline page header (title + back only) — sidebar already
        carries brand/user chrome, so keep that out of the per-screen header. */
     #shell.authed #screen-home .topbar{display:none;}
-    #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;justify-content:flex-start;}
+    #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;margin:0;justify-content:flex-start;}
     #shell.authed .topbar .brand .name{color:var(--ink);}
     #shell.authed .topbar .brand .sub{color:var(--slate);}
     #shell.authed .topbar button.back{display:none;}
@@ -111,7 +111,7 @@
   }
 
   /* Top bar */
-  .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);}
+  .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);margin:-20px -18px 0;}
   .topbar .brand{display:flex;flex-direction:column;line-height:1;}
   .topbar .brand .name{font-family:'Roboto',sans-serif;font-weight:900;font-size:19px;letter-spacing:0.03em;}
   .topbar .brand .sub{font-size:10px;color:var(--slate-light);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
