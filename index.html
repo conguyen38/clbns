@@ -1492,7 +1492,7 @@ async function renderAcceptanceActivities() {
     }
     wrap.innerHTML = `${canCreate ? '<button class="btn btn-primary" style="margin-bottom:14px;" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}<div class="card">${acceptanceActivitiesCache.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div class="l"><div class="t">${a.activity_name}</div><div class="s">${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div><div class="s">${a.description || 'Nhấn để gửi ảnh/bằng chứng nghiệm thu'}</div></div>
+        <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian nhận nghiệm thu: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
         <div class="r"><span class="chev">›</span></div>
       </div>`).join('')}</div>`;
   } catch (e) {
