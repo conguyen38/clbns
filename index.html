@@ -337,6 +337,7 @@
   <div class="sb-foot">
     <button class="sb-link" id="sidebar-return-admin-link" style="display:none;" onclick="returnToAdmin()"><span class="sb-ic">↩</span>Về tài khoản Admin</button>
     <button class="sb-link" id="sidebar-switch-link" style="display:none;" onclick="openAccountSwitcher()"><span class="sb-ic">🔀</span>Chuyển tài khoản (test)</button>
+    <button class="sb-link" onclick="openPasswordModal()"><span class="sb-ic">🔑</span>Đổi mật khẩu</button>
     <div class="sb-user"><div class="u-name" id="sb-username">—</div><div class="u-role" id="sb-role">—</div></div>
     <button class="sb-link" onclick="logout()"><span class="sb-ic">⏻</span>Đăng xuất</button>
   </div>
@@ -586,6 +587,22 @@
   </div>
 </div>
 
+<div class="switcher" id="pwd-modal" onclick="closePasswordModal()">
+  <div class="switcher-panel" onclick="event.stopPropagation()" style="max-width:380px;">
+    <div class="switcher-head">
+      <div><div class="t">Đổi mật khẩu</div><div class="d">Tài khoản @<span id="pwd-username"></span></div></div>
+      <button class="lb-close" style="position:static;background:var(--paper);color:var(--ink);" onclick="closePasswordModal()">✕</button>
+    </div>
+    <div style="padding:18px;">
+      <div id="pwd-banner"></div>
+      <label style="margin-top:0;">Mật khẩu hiện tại</label><input id="pwd-current" type="password" autocomplete="current-password">
+      <label>Mật khẩu mới</label><input id="pwd-new" type="password" autocomplete="new-password">
+      <label>Nhập lại mật khẩu mới</label><input id="pwd-confirm" type="password" autocomplete="new-password">
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="submitChangePassword(event)">Đổi mật khẩu</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* =========================================================
    CẤU HÌNH — dán URL Web App (Apps Script) của chị vào đây
@@ -710,20 +727,12 @@ function openLightbox(url) {
   document.getElementById('lightbox').classList.add('open');
 }
 
-// Ảnh gốc chất lượng đầy đủ không nằm trong listCheckins (quá nặng) -> tải
-// riêng đúng lúc bấm xem lightbox. `el` có thể là ảnh thumbnail nhỏ hoặc nút
-// icon (khi chưa có thumbnail) -- chỉ nút mới có trạng thái "đang tải".
-async function openCheckinPhoto(checkinId, el) {
-  const isBtn = el && el.tagName === 'BUTTON';
-  if (isBtn) { el.disabled = true; el.innerText = '…'; }
-  try {
-    const { photo_url } = await api('getCheckinPhoto', { checkin_id: checkinId });
-    openLightbox(photo_url);
-  } catch (e) {
-    alert('Không tải được ảnh: ' + e.message);
-  } finally {
-    if (isBtn) { el.disabled = false; el.innerText = '🖼️'; }
-  }
+// Ảnh gốc chất lượng đầy đủ không nằm trong listCheckins (quá nặng). Trỏ thẳng
+// <img> lightbox vào endpoint ảnh thật /api/photo (không bọc JSON/base64 ->
+// nhẹ hơn ~33%, và có Cache-Control nên trình duyệt tự cache lại — xem lại
+// cùng 1 ảnh lần sau gần như tức thì, không cần gọi API nữa).
+function openCheckinPhoto(checkinId) {
+  openLightbox(`/api/photo?checkin_id=${encodeURIComponent(checkinId)}`);
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
@@ -889,6 +898,39 @@ function returnToAdmin() {
   localStorage.setItem('proagent_user', JSON.stringify(state.user));
   localStorage.removeItem('proagent_impersonator');
   goHome();
+}
+
+/* ============== CHANGE PASSWORD (self-service) ============== */
+function openPasswordModal() {
+  document.getElementById('pwd-username').innerText = state.user.username;
+  document.getElementById('pwd-current').value = '';
+  document.getElementById('pwd-new').value = '';
+  document.getElementById('pwd-confirm').value = '';
+  banner('pwd-banner', '', '');
+  document.getElementById('pwd-modal').classList.add('open');
+}
+function closePasswordModal() {
+  document.getElementById('pwd-modal').classList.remove('open');
+}
+async function submitChangePassword(evt) {
+  const btn = evt ? evt.currentTarget : null;
+  if (btn && btn.disabled) return;
+  const current = document.getElementById('pwd-current').value;
+  const next = document.getElementById('pwd-new').value;
+  const confirmPwd = document.getElementById('pwd-confirm').value;
+  if (!current || !next || !confirmPwd) { banner('pwd-banner', 'err', 'Vui lòng nhập đủ thông tin.'); return; }
+  if (next !== confirmPwd) { banner('pwd-banner', 'err', 'Mật khẩu mới nhập lại không khớp.'); return; }
+  if (next.length < 4) { banner('pwd-banner', 'err', 'Mật khẩu mới quá ngắn (tối thiểu 4 ký tự).'); return; }
+  if (btn) btn.disabled = true;
+  try {
+    await api('changePassword', { username: state.user.username, current_password: current, new_password: next });
+    banner('pwd-banner', 'ok', 'Đã đổi mật khẩu thành công.');
+    setTimeout(closePasswordModal, 1200);
+  } catch (e) {
+    banner('pwd-banner', 'err', e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 /* ============== HOME ============== */
@@ -1148,8 +1190,8 @@ function renderStHistory() {
   if (!stHistoryRows.length) { wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có checkin nào.</div>'; return; }
   const { pageRows, page, totalPages, total } = sliceForPage(stHistoryRows, stHistoryPage);
   const thumb = r => {
-    if (r.photo_thumb) return `<img class="thumb" src="${r.photo_thumb}" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}', this)">`;
-    if (r.has_photo) return `<button class="thumb-btn" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}', this)">🖼️</button>`;
+    if (r.photo_thumb) return `<img class="thumb" src="${r.photo_thumb}" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}')">`;
+    if (r.has_photo) return `<button class="thumb-btn" title="Xem ảnh" onclick="openCheckinPhoto('${r.checkin_id}')">🖼️</button>`;
     return '<span class="thumb-none" title="Không có ảnh">🚫</span>';
   };
   const cardsHtml = '<div class="card history-cards">' + pageRows.map(r => `
@@ -1553,9 +1595,9 @@ function renderAccountsView() {
     wrap.innerHTML = `
       <div class="card">
         <div class="eyebrow">${editing ? 'Sửa tài khoản @' + editing.username : 'Tạo tài khoản mới'}</div>
-        <label style="margin-top:0;">Username</label><input id="ac-username" placeholder="vd: sa.nguyenvana" value="${editing ? editing.username : ''}" ${editing ? 'disabled' : ''}>
+        <label style="margin-top:0;">Họ tên</label><input id="ac-fullname" placeholder="Nguyễn Văn A" value="${editing ? editing.full_name : ''}">
+        <label>Username</label><input id="ac-username" placeholder="vd: sa.nguyenvana" value="${editing ? editing.username : ''}" ${editing ? 'disabled' : ''}>
         <label>${editing ? 'Mật khẩu mới (để trống nếu không đổi)' : 'Mật khẩu'}</label><input id="ac-password" type="text" placeholder="${editing ? 'Để trống nếu giữ nguyên' : 'Mật khẩu ban đầu'}">
-        <label>Họ tên</label><input id="ac-fullname" placeholder="Nguyễn Văn A" value="${editing ? editing.full_name : ''}">
         <label>Vai trò</label>
         <select id="ac-role" onchange="toggleAccountFields()">
           <option value="SA">SA — Sales Agent</option>
