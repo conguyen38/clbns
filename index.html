@@ -140,6 +140,7 @@
 
   /* Forms */
   label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:14px 0 6px;}
+  label.step-label{font-size:17px;font-weight:700;color:var(--ink);margin:22px 0 10px;}
   input,select,textarea{width:100%;padding:12px 13px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:15px;font-family:'Roboto',sans-serif;color:var(--ink-2);}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
   textarea{resize:vertical;min-height:70px;}
@@ -299,9 +300,9 @@
   .switcher-row:hover{background:var(--paper);}
   .switcher-row:last-child{border-bottom:none;}
   .switcher-row.current{background:var(--green-bg);cursor:default;}
-  .thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--line);display:block;}
-  .thumb-none{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:0.55;}
-  .thumb-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;font-size:17px;cursor:pointer;}
+  .thumb{width:44px;height:44px;flex-shrink:0;border-radius:8px;object-fit:cover;cursor:pointer;border:1px solid var(--line);display:block;}
+  .thumb-none{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;opacity:0.55;}
+  .thumb-btn{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;font-size:17px;cursor:pointer;}
   .thumb-btn:hover{background:#fff;border-color:var(--ink);}
   .thumb-btn[disabled]{opacity:0.5;cursor:wait;}
 
@@ -434,7 +435,7 @@
     <div style="padding-top:18px;" class="form-col">
       <div id="st-checkin-banner"></div>
 
-      <label style="margin-top:0;">Bước 1 — Vị trí GPS</label>
+      <label class="step-label" style="margin-top:0;">Bước 1 — Vị trí GPS</label>
       <div class="gps-box">
         <div class="dot" id="gps-dot"></div>
         <div class="txt"><span class="lbl">Tọa độ hiện tại</span><span id="gps-coords">Chưa lấy vị trí</span></div>
@@ -1213,11 +1214,11 @@ function renderStHistory() {
   };
   const cardsHtml = '<div class="card history-cards">' + pageRows.map(r => `
     <div class="row">
-      <div class="l" style="display:flex;gap:12px;align-items:center;">
+      <div class="l" style="display:flex;gap:12px;align-items:center;min-width:0;">
         ${thumb(r)}
-        <div><div class="t">${r.checkpoint_name}</div><div class="s">${r.sa_name || r.sa_username} · ${fmtDate(r.timestamp)}</div></div>
+        <div style="min-width:0;"><div class="t">${r.checkpoint_name}</div><div class="s">${r.sa_name || r.sa_username} · ${fmtDate(r.timestamp)}</div></div>
       </div>
-      <div class="r"><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span><div style="margin-top:4px;">${fmtDistance(r.distance_m)}</div></div>
+      <div class="r" style="flex-shrink:0;"><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Ngoài vùng'}</span><div style="margin-top:8px;">${fmtDistance(r.distance_m)}</div></div>
     </div>`).join('') + renderPager(page, totalPages, total, 'stHistorySetPage') + '</div>';
   const tableHtml = `
     <div class="card dtable-wrap" style="padding:0;">
