@@ -219,7 +219,13 @@ ACTIONS.getActivityCheckStatus = async (pool, data) => {
     [data.username, data.activity_id]
   );
   const last = rows[0];
-  return { next_action: (last && last.action_type === 'checkin') ? 'checkout' : 'checkin' };
+  const awaitingCheckout = last && last.action_type === 'checkin';
+  return {
+    next_action: awaitingCheckout ? 'checkout' : 'checkin',
+    // Trả lại giờ check in gần nhất để giao diện khóa ô Check in và hiển thị
+    // chính xác thời điểm nhân viên đã thực hiện thao tác này.
+    checkin_timestamp: awaitingCheckout ? last.timestamp : null
+  };
 };
 
 ACTIONS.submitActivityLog = async (pool, data) => {

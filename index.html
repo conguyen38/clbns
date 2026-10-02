@@ -212,6 +212,18 @@
   .btn-row{display:flex;gap:10px;}
   .btn-row .btn{flex:1;}
 
+  /* Check in/out chooser */
+  .activity-summary{margin-bottom:16px;}
+  .activity-summary .activity-name{font-size:18px;font-weight:700;color:var(--ink);}
+  .activity-summary .activity-time{font-size:13px;color:var(--slate);margin-top:6px;}
+  .check-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .check-action{min-height:112px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);font-family:'Roboto',sans-serif;cursor:pointer;}
+  .check-action.active{border:2px solid var(--ink);background:#F2F6FA;}
+  .check-action:disabled{cursor:not-allowed;opacity:.5;background:#EEF1F3;}
+  .check-action .action-name{display:block;font-size:15px;font-weight:700;color:var(--ink);text-transform:uppercase;}
+  .check-action .action-state,.check-action .action-window{display:block;font-size:12px;color:var(--slate);line-height:1.45;margin-top:6px;}
+  .check-action .action-window{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;}
+
   /* Status badges */
   .badge{display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;text-transform:uppercase;letter-spacing:0.04em;}
   .badge.pendingsm, .badge.pendingssm{background:#FBF1E1;color:var(--amber-dark);}
@@ -482,6 +494,24 @@
     </div>
     <div style="padding-top:18px;" class="form-col">
       <div id="st-checkin-banner"></div>
+      <section class="card activity-summary" aria-label="Thông tin hoạt động">
+        <div class="eyebrow">Hoạt động</div>
+        <div class="activity-name" id="st-activity-name">—</div>
+        <div class="activity-time" id="st-activity-time">Thời gian diễn ra: —</div>
+      </section>
+
+      <div class="check-action-grid" aria-label="Chọn thao tác">
+        <button type="button" class="check-action" id="st-checkin-action" onclick="chooseActivityAction('checkin')">
+          <span class="action-name">Check in</span>
+          <span class="action-state" id="st-checkin-state"></span>
+          <span class="action-window" id="st-checkin-window"></span>
+        </button>
+        <button type="button" class="check-action" id="st-checkout-action" onclick="chooseActivityAction('checkout')">
+          <span class="action-name">Check out</span>
+          <span class="action-state" id="st-checkout-state"></span>
+          <span class="action-window" id="st-checkout-window"></span>
+        </button>
+      </div>
 
       <div id="st-gps-step">
         <label class="step-label" style="margin-top:0;">Bước 1 — Vị trí GPS</label>
@@ -1124,7 +1154,7 @@ function renderCheckpointList() {
   const isAdmin = state.user.role === 'Admin';
   wrap.innerHTML = filtered.map(cp => `
     <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
-      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div></div>
+      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s mono">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div></div>
       ${isAdmin ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()">
         <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="goSitetourCreateActivity('${cp.checkpoint_id}')">Sửa</button>
         <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteSitetourActivity('${cp.checkpoint_id}', event)">Xóa</button>
@@ -1133,15 +1163,51 @@ function renderCheckpointList() {
 }
 
 let nextActivityAction = 'checkin';
+let activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null };
 
 async function selectCheckpoint(id) {
   state.selectedCheckpoint = state.checkpoints.find(c => c.checkpoint_id === id);
   nextActivityAction = 'checkin';
+  activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null };
   try {
     const status = await api('getActivityCheckStatus', { username: state.user.username, activity_id: id });
+    activityCheckStatus = status;
     nextActivityAction = status.next_action;
   } catch (e) { /* lỗi hiếm -> mặc định checkin, không chặn người dùng */ }
   goCheckinCapture();
+}
+
+function fmtCheckinTime(timestamp) {
+  if (!timestamp) return '';
+  const d = new Date(timestamp);
+  return isNaN(d) ? '' : d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderActivityActionCards() {
+  const cp = state.selectedCheckpoint;
+  const awaitingCheckout = activityCheckStatus.next_action === 'checkout';
+  const checkinBtn = document.getElementById('st-checkin-action');
+  const checkoutBtn = document.getElementById('st-checkout-action');
+  const checkinTime = fmtCheckinTime(activityCheckStatus.checkin_timestamp);
+
+  checkinBtn.disabled = awaitingCheckout;
+  checkoutBtn.disabled = !awaitingCheckout;
+  checkinBtn.classList.toggle('active', nextActivityAction === 'checkin');
+  checkoutBtn.classList.toggle('active', nextActivityAction === 'checkout');
+  document.getElementById('st-checkin-state').innerText = awaitingCheckout ? `Đã check in lúc ${checkinTime || '—'}` : 'Sẵn sàng check in';
+  document.getElementById('st-checkout-state').innerText = awaitingCheckout ? 'Bấm để check out' : 'Cần check in trước';
+  document.getElementById('st-checkin-window').innerText = `Chấp nhận: ${fmtTimeDisplay(cp.checkin_start)} – ${fmtTimeDisplay(cp.checkin_end)}`;
+  document.getElementById('st-checkout-window').innerText = `Chấp nhận: ${fmtTimeDisplay(cp.checkout_start)} – ${fmtTimeDisplay(cp.checkout_end)}`;
+}
+
+function chooseActivityAction(action) {
+  const awaitingCheckout = activityCheckStatus.next_action === 'checkout';
+  if ((action === 'checkout' && !awaitingCheckout) || (action === 'checkin' && awaitingCheckout)) return;
+  nextActivityAction = action;
+  renderActivityActionCards();
+  document.getElementById('st-checkin-action-title').innerText = action === 'checkout' ? 'CHECK OUT' : 'CHECK IN';
+  document.getElementById('submit-checkin-btn').innerHTML = `Ghi nhận ${action === 'checkout' ? 'Check out' : 'Check in'}`;
+  document.getElementById('st-gps-step').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function goCheckinCapture() {
@@ -1160,6 +1226,9 @@ function goCheckinCapture() {
   banner('st-checkin-banner', '', '');
   document.getElementById('st-checkin-action-title').innerText = actionLabel.toUpperCase();
   document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
+  document.getElementById('st-activity-name').innerText = state.selectedCheckpoint.checkpoint_name;
+  document.getElementById('st-activity-time').innerText = `Thời gian diễn ra: ${fmtDateOnly(state.selectedCheckpoint.event_start)} – ${fmtDateOnly(state.selectedCheckpoint.event_end)}`;
+  renderActivityActionCards();
 
   const isOffline = state.selectedCheckpoint.activity_type !== 'online';
   document.getElementById('st-gps-step').style.display = isOffline ? 'block' : 'none';
