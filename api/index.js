@@ -293,8 +293,15 @@ const ACCEPTANCE_LIST_COLUMNS = `acceptance_id, acceptance_code, creator_usernam
 
 ACTIONS.listAcceptanceActivities = async (pool, data) => {
   const { rows } = await pool.query(
-    `SELECT acceptance_activity_id, activity_name, description, record_start, record_end, created_by, created_at
-     FROM acceptance_activities WHERE active=true ORDER BY created_at DESC, activity_name`
+    `SELECT aa.acceptance_activity_id, aa.activity_name, aa.description, aa.record_start, aa.record_end, aa.created_by, aa.created_at,
+       EXISTS (
+         SELECT 1 FROM acceptances ac
+         WHERE ac.acceptance_activity_id=aa.acceptance_activity_id AND ac.creator_username=$1
+       ) AS has_submission
+     FROM acceptance_activities aa
+     WHERE aa.active=true
+     ORDER BY aa.created_at DESC, aa.activity_name`,
+    [data.username]
   );
   return rows;
 };

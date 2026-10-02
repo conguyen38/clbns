@@ -357,6 +357,9 @@
   .activity-toolbar{display:flex;flex-direction:column;gap:14px;margin-bottom:14px;}
   .activity-toolbar input{flex:1;margin:0!important;}
   .activity-toolbar .btn{order:-1;margin:0!important;}
+  .activity-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;}
+  .activity-filter{width:auto;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--slate);font-family:'Roboto',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+  .activity-filter.active{background:var(--ink);border-color:var(--ink);color:#fff;}
   @media (min-width:768px){
     .activity-toolbar{flex-direction:row;align-items:center;}
     .activity-toolbar .btn{order:0;width:auto;flex-shrink:0;padding:12px 18px;white-space:nowrap;}
@@ -1541,6 +1544,7 @@ let acceptanceReportMonth = new Date().toISOString().slice(0, 7);
 let acceptanceReportOpenUsername = null;
 let acceptanceActivitiesCache = [];
 let acceptanceActivitySearch = '';
+let acceptanceActivityFilter = 'all';
 let acceptanceSelectedActivityId = null;
 let acceptanceSelectedActivityName = '';
 let editingAcceptanceActivityId = null;
@@ -1607,13 +1611,25 @@ function setAcceptanceActivitySearch(value) {
   rerenderPreservingFocus(renderAcceptanceActivitiesView);
 }
 
+function setAcceptanceActivityFilter(value) {
+  acceptanceActivityFilter = value;
+  renderAcceptanceActivitiesView();
+}
+
 function renderAcceptanceActivitiesView() {
   const wrap = document.getElementById('acceptance-tab-content');
   const canCreate = state.user.role === 'Admin';
-  const activities = filterRows(acceptanceActivitiesCache, acceptanceActivitySearch, ['activity_name', 'description']);
+  const isCompleted = activity => activity.has_submission === true || activity.has_submission === 'true';
+  const activities = filterRows(acceptanceActivitiesCache, acceptanceActivitySearch, ['activity_name', 'description'])
+    .filter(a => acceptanceActivityFilter === 'all' || (acceptanceActivityFilter === 'completed' ? isCompleted(a) : !isCompleted(a)))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const toolbar = `<div class="activity-toolbar">
     <input id="nt-activity-search" placeholder="🔍 Tìm theo tên hoạt động..." value="${acceptanceActivitySearch}" oninput="setAcceptanceActivitySearch(this.value)">
     ${canCreate ? '<button class="btn btn-primary" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}
+  </div><div class="activity-filters" aria-label="Lọc hoạt động nghiệm thu">
+    <button class="activity-filter ${acceptanceActivityFilter==='all'?'active':''}" onclick="setAcceptanceActivityFilter('all')">Tất cả</button>
+    <button class="activity-filter ${acceptanceActivityFilter==='pending'?'active':''}" onclick="setAcceptanceActivityFilter('pending')">Chờ thực hiện</button>
+    <button class="activity-filter ${acceptanceActivityFilter==='completed'?'active':''}" onclick="setAcceptanceActivityFilter('completed')">Hoàn thành</button>
   </div>`;
   if (!acceptanceActivitiesCache.length) {
     wrap.innerHTML = `${toolbar}<div class="empty"><div class="big">📭</div>Chưa có hoạt động nghiệm thu nào.</div>`;
@@ -1625,7 +1641,7 @@ function renderAcceptanceActivitiesView() {
   }
   wrap.innerHTML = `${toolbar}<div class="card">${activities.map(a => `
       <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div class="l"><div class="t">${a.activity_name}</div><div class="s">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
+        <div class="l"><div class="t">${a.activity_name} <span class="badge ${isCompleted(a)?'approved':'pendingsm'}">${isCompleted(a)?'Hoàn thành':'Chờ thực hiện'}</span></div><div class="s">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
         <div class="r">${canCreate ? `<div style="display:flex;gap:12px;"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : '<span class="chev">›</span>'}</div>
       </div>`).join('')}</div>`;
 }
