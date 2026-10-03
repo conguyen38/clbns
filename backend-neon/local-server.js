@@ -1,10 +1,18 @@
 require('dotenv').config();
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { URL } = require('url');
+const { setPool } = require('../api/db.js');
+const { createDemoPool } = require('./demo-db.js');
 const apiHandler = require('../api/index.js');
 const photoHandler = require('../api/photo.js');
 
 const PORT = process.env.PORT || 8787;
+// Chế độ demo (mặc định khi chưa có DATABASE_URL): dùng database trong bộ nhớ
+// với data mẫu thay vì Neon. Ép bật bằng DEMO=1.
+const DEMO = process.env.DEMO === '1' || !process.env.DATABASE_URL;
+const INDEX_HTML = path.join(__dirname, '..', 'index.html');
 
 function wrapRes(res) {
   res.status = (code) => { res.statusCode = code; return res; };
@@ -20,6 +28,12 @@ const server = http.createServer(async (req, res) => {
   wrapRes(res);
   const parsed = new URL(req.url, `http://localhost:${PORT}`);
   req.query = Object.fromEntries(parsed.searchParams);
+
+  if (req.method === 'GET' && (parsed.pathname === '/' || parsed.pathname === '/index.html')) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end(fs.readFileSync(INDEX_HTML));
+    return;
+  }
 
   if (parsed.pathname === '/api/photo') {
     try { await photoHandler(req, res); }
@@ -37,6 +51,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`ProAgent Neon backend (local) running at http://localhost:${PORT}`);
-});
+(async () => {
+  if (DEMO) setPool(await createDemoPool());
+  server.listen(PORT, () => {
+    console.log(`ProAgent local running at http://localhost:${PORT} (${DEMO ? 'DEMO data' : 'Neon DATABASE_URL'})`);
+  });
+})();

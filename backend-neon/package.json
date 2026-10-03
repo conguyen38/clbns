@@ -6,9 +6,11 @@
   "scripts": {
     "schema:apply": "node apply_schema_http.js",
     "start": "node local-server.js",
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "demo": "DEMO=1 node local-server.js"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@neondatabase/serverless": "^1.1.0",
     "dotenv": "^18.0.4",
     "jimp": "^1.6.1",

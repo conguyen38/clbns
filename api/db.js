@@ -11,4 +11,10 @@ function getPool() {
   return pool;
 }
 
-module.exports = { getPool };
+// Chỉ dùng cho server local (backend-neon/local-server.js) ở chế độ demo:
+// thay Neon bằng database trong bộ nhớ. Production không gọi hàm này.
+function setPool(customPool) {
+  pool = customPool;
+}
+
+module.exports = { getPool, setPool };

@@ -95,6 +95,13 @@ ALTER TABLE acceptance_activities ADD COLUMN IF NOT EXISTS record_start timestam
 ALTER TABLE acceptance_activities ADD COLUMN IF NOT EXISTS record_end timestamptz;
 ALTER TABLE acceptances ADD COLUMN IF NOT EXISTS acceptance_activity_id text;
 
+-- Thời điểm tạo hoạt động Check in, dùng để báo "hoạt động mới" trên giao
+-- diện. Hoạt động đã có từ trước được gán mốc cũ để không bị báo là mới.
+ALTER TABLE checkpoints ADD COLUMN IF NOT EXISTS created_at timestamptz;
+UPDATE checkpoints SET created_at = '2000-01-01T00:00:00Z' WHERE created_at IS NULL;
+ALTER TABLE checkpoints ALTER COLUMN created_at SET DEFAULT now();
+ALTER TABLE checkpoints ALTER COLUMN created_at SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_checkins_username ON checkins(username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_creator ON acceptances(creator_username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_status ON acceptances(status);

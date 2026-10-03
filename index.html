@@ -219,13 +219,25 @@
   .activity-summary{margin-bottom:16px;}
   .activity-summary .activity-name{font-size:18px;font-weight:700;color:var(--ink);}
   .activity-summary .activity-time{font-size:13px;color:var(--slate);margin-top:6px;}
+  .activity-summary .activity-desc{font-size:13px;color:var(--slate);margin-top:6px;line-height:1.5;}
+  .activity-summary .activity-desc:empty,.activity-summary .activity-time:empty,.activity-summary .activity-status:empty{display:none;}
+  .activity-summary .activity-status{margin-top:10px;}
+  #nt-activity-time{font-weight:700;color:var(--ink);}
   .check-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
-  .check-action{min-height:112px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);font-family:'Roboto',sans-serif;cursor:pointer;}
+  .check-action{display:flex;flex-direction:column;justify-content:flex-start;min-height:112px;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);font-family:'Roboto',sans-serif;cursor:pointer;}
   .check-action.active{border:2px solid var(--ink);background:#F2F6FA;}
   .check-action:disabled{cursor:not-allowed;opacity:.5;background:#EEF1F3;}
   .check-action .action-name{display:block;font-size:15px;font-weight:700;color:var(--ink);text-transform:uppercase;}
   .check-action .action-state,.check-action .action-window{display:block;font-size:12px;color:var(--slate);line-height:1.45;margin-top:6px;}
   .check-action .action-window{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;}
+  .check-action .action-tag{display:block;margin-top:8px;}
+  .check-action .action-tag:empty{display:none;}
+  .action-hint{text-align:center;font-size:13px;color:var(--slate);padding:18px 10px;border:1px dashed var(--line);border-radius:12px;}
+  .action-result .result-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px;}
+  .action-result .eyebrow + .result-row{border-top:none;}
+  .action-result .result-row .k{color:var(--slate);}
+  .action-result .result-row .v{font-weight:600;color:var(--ink);text-align:right;}
+  .action-result .result-photo{margin-top:12px;max-width:100%;max-height:220px;border-radius:10px;cursor:pointer;display:block;}
 
   /* Status badges */
   .badge{display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:100px;text-transform:uppercase;letter-spacing:0.04em;}
@@ -290,6 +302,8 @@
   .pick.selected{border-color:var(--ink);background:#F3F6FB;}
   .pick .t{font-weight:600;font-size:14.5px;}
   .pick .s{font-size:12px;color:var(--slate);margin-top:2px;}
+  .pick .s.event-time{font-weight:700;color:var(--ink);font-size:12.5px;margin-top:4px;}
+  .pick .check-tag{margin-top:8px;}
 
   .empty{text-align:center;padding:40px 10px;color:var(--slate);font-size:13.5px;}
   .empty .big{font-size:34px;margin-bottom:8px;}
@@ -360,6 +374,25 @@
   .activity-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px;}
   .activity-filter{width:auto;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--slate);font-family:'Roboto',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
   .activity-filter.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .activity-filters.split{justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:10px;}
+  .activity-filters .chip-group{display:flex;flex-wrap:wrap;gap:8px;}
+  .sort-dd{position:relative;flex-shrink:0;}
+  .sort-btn{display:inline-flex;align-items:center;gap:6px;width:auto;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-family:'Roboto',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
+  .sort-btn svg{width:16px;height:16px;flex-shrink:0;}
+  .sort-btn .caret{font-size:10px;color:var(--slate);}
+  .sort-dd .cs-menu{left:auto;right:0;min-width:170px;}
+  .sort-dd.open .cs-menu{display:block;}
+  @media (max-width:767px){
+    .sort-btn{padding:7px;border-radius:50%;}
+    .sort-btn .sort-label,.sort-btn .caret{display:none;}
+  }
+  .badge.inprogress{background:#E8EFF6;color:var(--ink);}
+  [hidden]{display:none!important;}
+  .badge.new{background:var(--red);color:#fff;}
+  .activity-filter .chip-dot{margin-left:6px;width:7px;height:7px;vertical-align:1px;}
+  .alert-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:6px;vertical-align:1px;}
+  .nav-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);margin-left:auto;flex-shrink:0;box-shadow:0 0 0 2px rgba(192,57,43,.25);}
+  .tap-card .t .nav-dot{margin-left:8px;vertical-align:4px;}
   @media (min-width:768px){
     .activity-toolbar{flex-direction:row;align-items:center;}
     .activity-toolbar .btn{order:0;width:auto;flex-shrink:0;padding:12px 18px;white-space:nowrap;}
@@ -382,8 +415,8 @@
   <div class="sb-brand"><div class="name">PROAGENT</div><div class="sub">Tracking Platform</div></div>
   <div class="sb-nav">
     <button class="sb-link" data-nav="home" onclick="goHome()"><span class="sb-ic">🏠</span>Trang chủ</button>
-    <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Check in</button>
-    <button class="sb-link" data-nav="acceptance" onclick="goAcceptanceHome()"><span class="sb-ic">✅</span>Nghiệm thu</button>
+    <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Check in<span class="nav-dot" id="sb-checkin-dot" title="Có hoạt động mới" hidden></span></button>
+    <button class="sb-link" data-nav="acceptance" onclick="goAcceptanceHome()"><span class="sb-ic">✅</span>Nghiệm thu<span class="nav-dot" id="sb-acceptance-dot" title="Có nghiệm thu bị từ chối" hidden></span></button>
     <button class="sb-link" id="sidebar-report-link" data-nav="report" style="display:none;" onclick="goReport()"><span class="sb-ic">📊</span>Báo cáo</button>
     <button class="sb-link" id="sidebar-admin-link" data-nav="admin" style="display:none;" onclick="goAdmin()"><span class="sb-ic">⚙️</span>Quản trị</button>
   </div>
@@ -418,6 +451,14 @@
           <label>Mật khẩu</label>
           <input id="login-password" type="password" autocomplete="current-password" placeholder="••••••••">
           <button class="btn btn-primary" style="margin-top:22px;" onclick="doLogin()" id="login-btn">Đăng nhập</button>
+          <div id="demo-logins" style="display:none;margin-top:16px;font-size:12.5px;color:var(--slate);">
+            Tài khoản demo (local):
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+              <button type="button" class="btn" style="width:auto;padding:6px 10px;font-size:12px;" onclick="demoLogin('admin','Admin@123')">Admin</button>
+              <button type="button" class="btn" style="width:auto;padding:6px 10px;font-size:12px;" onclick="demoLogin('sm01','123456')">SM · sm01</button>
+              <button type="button" class="btn" style="width:auto;padding:6px 10px;font-size:12px;" onclick="demoLogin('sa01','123456')">SA · sa01</button>
+            </div>
+          </div>
         </div>
         <div class="fab-note">Chưa có tài khoản? Liên hệ Admin để được cấp quyền truy cập.</div>
       </div>
@@ -438,12 +479,12 @@
       <div class="home-grid">
       <div class="tap-card" onclick="goSitetourList()">
         <div class="icon blue">📍</div>
-        <div><div class="t">Check in</div><div class="d">Check in/out hoạt động online hoặc offline</div></div>
+        <div><div class="t">Check in<span class="nav-dot" id="home-checkin-dot" title="Có hoạt động mới" hidden></span></div><div class="d">Check in/out hoạt động online hoặc offline</div></div>
         <div class="chev">›</div>
       </div>
       <div class="tap-card" onclick="goAcceptanceHome()">
         <div class="icon amber">✅</div>
-        <div><div class="t">Nghiệm thu</div><div class="d">Gửi ảnh chụp màn hình & duyệt hoạt động</div></div>
+        <div><div class="t">Nghiệm thu<span class="nav-dot" id="home-acceptance-dot" title="Có nghiệm thu bị từ chối" hidden></span></div><div class="d">Gửi ảnh chụp màn hình & duyệt hoạt động</div></div>
         <div class="chev">›</div>
       </div>
       <div class="tap-card" id="home-admin-card" style="display:none;" onclick="goAdmin()">
@@ -471,6 +512,7 @@
         <input id="st-search-input" placeholder="🔍 Tìm theo tên hoạt động, địa chỉ..." oninput="stCheckpointSetSearch(this.value)">
         <button class="btn btn-primary" id="st-create-activity-btn" style="display:none;" onclick="goSitetourCreateActivity()">+ Tạo hoạt động</button>
       </div>
+      <div class="activity-filters split" id="st-checkpoint-filters" aria-label="Lọc và sắp xếp hoạt động"></div>
       <div id="st-checkpoint-list" class="pick-grid"></div>
     </div>
   </div>
@@ -541,14 +583,21 @@
           <span class="action-name">Check in</span>
           <span class="action-state" id="st-checkin-state"></span>
           <span class="action-window" id="st-checkin-window"></span>
+          <span class="action-tag" id="st-checkin-tag"></span>
         </button>
         <button type="button" class="check-action" id="st-checkout-action" onclick="chooseActivityAction('checkout')">
           <span class="action-name">Check out</span>
           <span class="action-state" id="st-checkout-state"></span>
           <span class="action-window" id="st-checkout-window"></span>
+          <span class="action-tag" id="st-checkout-tag"></span>
         </button>
       </div>
 
+      <div class="action-hint" id="st-action-hint">Bấm Check in hoặc Check out để bắt đầu.</div>
+      <section class="card action-result" id="st-action-result" hidden></section>
+
+      <div id="st-capture-steps" hidden>
+      <div class="banner info" id="st-retry-note" hidden>Check in lại sẽ bắt đầu lượt mới — sau đó bạn cần check out lại.</div>
       <div id="st-gps-step">
         <label class="step-label" style="margin-top:0;">Bước 1 — Vị trí GPS</label>
         <div class="gps-box">
@@ -568,6 +617,7 @@
       <div class="progress-wrap" id="checkin-progress-wrap" style="display:none;">
         <div class="progress-track"><div class="progress-fill" id="checkin-progress-fill"></div></div>
         <div class="progress-label" id="checkin-progress-label">0%</div>
+      </div>
       </div>
     </div>
   </div>
@@ -633,11 +683,23 @@
   <div class="screen" id="screen-acceptance-new">
     <div class="topbar">
       <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name">TẠO NGHIỆM THU</span><span class="sub">Gửi ảnh chụp màn hình</span></div>
+      <div class="brand"><span class="name">TẠO NGHIỆM THU</span><span class="sub" id="nt-activity-sub">Gửi ảnh chụp màn hình</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
       <div id="nt-banner"></div>
+      <section class="card activity-summary" id="nt-activity-summary" aria-label="Thông tin hoạt động" hidden>
+        <div class="eyebrow">Hoạt động</div>
+        <div class="activity-name" id="nt-activity-name">—</div>
+        <div class="activity-desc" id="nt-activity-desc"></div>
+        <div class="activity-time" id="nt-activity-time"></div>
+        <div class="activity-status" id="nt-activity-status"></div>
+      </section>
+
+      <section class="card action-result" id="nt-existing" hidden></section>
+      <div class="banner err" id="nt-closed-note" hidden>Hoạt động hiện không trong thời gian ghi nhận nghiệm thu.</div>
+
+      <div id="nt-form">
 
       <label style="margin-top:0;">Ảnh chụp màn hình</label>
       <input type="file" accept="image/png,image/jpeg,image/webp" id="nt-photo-input" onchange="onAcceptancePhotoSelected(event)" style="display:none;">
@@ -649,6 +711,7 @@
       <textarea id="nt-description" placeholder="Nhập ghi chú nếu cần..."></textarea>
 
       <button class="btn btn-primary" style="margin-top:22px;" id="nt-submit-btn" disabled onclick="submitAcceptanceNow()">Gửi duyệt</button>
+      </div>
     </div>
   </div>
 
@@ -743,7 +806,10 @@
 /* =========================================================
    CẤU HÌNH API — Vercel serverless endpoint
    ========================================================= */
-const API_URL = "/api";
+// Mở file trực tiếp (file://) hoặc qua dev server khác cổng (vd Live Server)
+// thì gọi thẳng server local ở cổng 8787; production vẫn dùng "/api".
+const IS_LOCAL = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+const API_URL = IS_LOCAL && location.port !== '8787' ? 'http://localhost:8787/api' : '/api';
 
 
 /* ============== STATE ============== */
@@ -830,7 +896,7 @@ function buildCustomSelect(sel) {
 }
 
 document.addEventListener('click', (e) => {
-  document.querySelectorAll('.cs-wrap.open').forEach(w => { if (!w.contains(e.target)) w.classList.remove('open'); });
+  document.querySelectorAll('.cs-wrap.open, .sort-dd.open').forEach(w => { if (!w.contains(e.target)) w.classList.remove('open'); });
 });
 
 function fmtDate(d) {
@@ -851,7 +917,7 @@ function openLightbox(url) {
 // nhẹ hơn ~33%, và có Cache-Control nên trình duyệt tự cache lại — xem lại
 // cùng 1 ảnh lần sau gần như tức thì, không cần gọi API nữa).
 function openCheckinPhoto(checkinId) {
-  openLightbox(`/api/photo?checkin_id=${encodeURIComponent(checkinId)}`);
+  openLightbox(`${API_URL}/photo?checkin_id=${encodeURIComponent(checkinId)}`);
 }
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
@@ -1064,6 +1130,7 @@ function goHome() {
   document.getElementById('home-role').innerText = roleLabel(state.user.role);
   document.getElementById('home-admin-card').style.display = (state.user.role === 'Admin') ? 'flex' : 'none';
   showScreen('screen-home');
+  refreshNavAlerts();
 }
 
 function roleLabel(r) {
@@ -1071,24 +1138,95 @@ function roleLabel(r) {
 }
 
 /* On load */
-window.addEventListener('DOMContentLoaded', () => { if (state.user) goHome(); });
+window.addEventListener('DOMContentLoaded', () => {
+  if (IS_LOCAL) document.getElementById('demo-logins').style.display = 'block';
+  if (state.user) goHome();
+});
+
+function demoLogin(username, password) {
+  document.getElementById('login-username').value = username;
+  document.getElementById('login-password').value = password;
+  doLogin();
+}
 
 /* =========================================================
    SITETOUR
    ========================================================= */
 let stCheckpointSearch = '';
+let stCheckpointNewIds = new Set(); // hoạt động check in mới trong lần mở danh sách này
+let stCheckpointFilter = 'all'; // all | pending | checked
+let stCheckpointSort = 'desc';  // desc = mới → cũ, asc = cũ → mới (theo thời gian diễn ra)
 function stCheckpointSetSearch(v) { stCheckpointSearch = v; rerenderPreservingFocus(renderCheckpointList); }
+function stCheckpointSetFilter(v) { stCheckpointFilter = v; stViewedFilters.add(v); renderCheckpointList(); }
+let stViewedFilters = new Set(['all']); // tag lọc đã bấm xem trong lần mở danh sách này
+
+function checkpointMatchesFilter(cp, filter) {
+  if (filter === 'pending') return !cp.check_status || cp.check_status === 'none';
+  if (filter === 'checked') return cp.check_status === 'checked_in' || cp.check_status === 'completed';
+  return true;
+}
+
+// Chấm đỏ trên tag lọc: tag chứa hoạt động mới mà người dùng chưa bấm xem.
+function checkpointFilterHasDot(filter) {
+  return !stViewedFilters.has(filter)
+    && state.checkpoints.some(cp => stCheckpointNewIds.has(cp.checkpoint_id) && checkpointMatchesFilter(cp, filter));
+}
+function stCheckpointSetSort(v) { stCheckpointSort = v; renderCheckpointList(); }
+
+const ST_SORT_OPTIONS = { desc: 'Mới → cũ', asc: 'Cũ → mới' };
+
+// Nút sắp xếp dạng dropdown (mobile chỉ còn icon), dùng chung cho các danh sách.
+function sortDropdownHtml(current, onSelectFn) {
+  return `<div class="sort-dd">
+      <button type="button" class="sort-btn" aria-label="Sắp xếp: ${ST_SORT_OPTIONS[current]}" title="Sắp xếp theo thời gian"
+        onclick="this.parentElement.classList.toggle('open')">${SORT_ICON}<span class="sort-label">${ST_SORT_OPTIONS[current]}</span><span class="caret">▾</span></button>
+      <div class="cs-menu" role="menu">${Object.entries(ST_SORT_OPTIONS).map(([value, label]) =>
+        `<div class="cs-option ${current === value ? 'selected' : ''}" role="menuitem" onclick="${onSelectFn}('${value}')">${label}</div>`).join('')}
+      </div>
+    </div>`;
+}
+const SORT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg>';
+
+function renderCheckpointFilters() {
+  const chip = (value, label) =>
+    `<button class="activity-filter ${stCheckpointFilter === value ? 'active' : ''}" onclick="stCheckpointSetFilter('${value}')">${label}${checkpointFilterHasDot(value) ? '<span class="nav-dot chip-dot" title="Có hoạt động mới"></span>' : ''}</button>`;
+  document.getElementById('st-checkpoint-filters').innerHTML = `
+    <span class="chip-group">${chip('all', 'Tất cả') + chip('pending', 'Chưa check in') + chip('checked', 'Đã check in')}</span>
+    ${sortDropdownHtml(stCheckpointSort, 'stCheckpointSetSort')}`;
+}
+
+// Tag trạng thái check hôm nay của user hiện tại cho 1 hoạt động.
+function checkpointStatusTag(cp) {
+  if (cp.check_status === 'completed') {
+    return cp.check_valid
+      ? '<span class="badge approved">✓ Đã check in/out</span>'
+      : '<span class="badge rejectedsm">Check in/out không hợp lệ</span>';
+  }
+  if (cp.check_status === 'checked_in') {
+    return cp.check_valid
+      ? '<span class="badge inprogress">Đã check in · chờ check out</span>'
+      : '<span class="badge rejectedsm">Check in không hợp lệ</span>';
+  }
+  return '';
+}
 
 async function goSitetourList() {
   showScreen('screen-sitetour-list');
   banner('st-list-banner', '', '');
   stCheckpointSearch = '';
+  stCheckpointFilter = 'all';
+  stCheckpointSort = 'desc';
   document.getElementById('st-search-input').value = '';
+  renderCheckpointFilters();
   document.getElementById('st-create-activity-btn').style.display = state.user.role === 'Admin' ? 'block' : 'none';
   document.getElementById('st-checkpoint-list').innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     const cps = await api('getCheckpointsForUser', { username: state.user.username });
     state.checkpoints = cps;
+    stCheckpointNewIds = newActivityIds(cps, 'checkpoint_id', 'checkin');
+    stViewedFilters = new Set([stCheckpointFilter]);
+    markSeen('checkin');
+    updateCheckinAlert(cps);
     renderCheckpointList();
   } catch (e) {
     banner('st-list-banner', 'err', e.message);
@@ -1184,7 +1322,11 @@ function renderCheckpointList() {
     wrap.innerHTML = '<div class="empty"><div class="big">📭</div>Chưa có hoạt động nào.</div>';
     return;
   }
-  const filtered = filterRows(state.checkpoints, stCheckpointSearch, ['checkpoint_name', 'address']);
+  renderCheckpointFilters();
+  const dir = stCheckpointSort === 'asc' ? 1 : -1;
+  const filtered = filterRows(state.checkpoints, stCheckpointSearch, ['checkpoint_name', 'address'])
+    .filter(cp => checkpointMatchesFilter(cp, stCheckpointFilter))
+    .sort((a, b) => dir * ((a.event_start || '').localeCompare(b.event_start || '') || (a.event_end || '').localeCompare(b.event_end || '')));
   if (!filtered.length) {
     wrap.innerHTML = '<div class="empty">Không tìm thấy hoạt động nào khớp.</div>';
     return;
@@ -1192,7 +1334,7 @@ function renderCheckpointList() {
   const isAdmin = state.user.role === 'Admin';
   wrap.innerHTML = filtered.map(cp => `
     <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
-      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s mono">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div></div>
+      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}${stCheckpointNewIds.has(cp.checkpoint_id) ? '<span class="badge new" style="margin-left:6px;">Mới</span>' : ''}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s event-time">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div>${checkpointStatusTag(cp) ? `<div class="check-tag">${checkpointStatusTag(cp)}</div>` : ''}</div>
       ${isAdmin ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()">
         <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="goSitetourCreateActivity('${cp.checkpoint_id}')">Sửa</button>
         <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteSitetourActivity('${cp.checkpoint_id}', event)">Xóa</button>
@@ -1201,12 +1343,14 @@ function renderCheckpointList() {
 }
 
 let nextActivityAction = 'checkin';
-let activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null };
+let selectedActivityAction = null; // thao tác đang mở trong màn chi tiết (null = chưa chọn)
+let retryingActivityAction = null; // thao tác không hợp lệ đang được làm lại
+let activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null, checkin: null, checkout: null };
 
 async function selectCheckpoint(id) {
   state.selectedCheckpoint = state.checkpoints.find(c => c.checkpoint_id === id);
   nextActivityAction = 'checkin';
-  activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null };
+  activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null, checkin: null, checkout: null };
   try {
     const status = await api('getActivityCheckStatus', { username: state.user.username, activity_id: id });
     activityCheckStatus = status;
@@ -1221,34 +1365,104 @@ function fmtCheckinTime(timestamp) {
   return isNaN(d) ? '' : d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 }
 
+// Bản ghi hôm nay của 1 thao tác (null nếu chưa làm).
+function activityActionRecord(action) {
+  return activityCheckStatus[action] || null;
+}
+
+function activityActionTag(record) {
+  if (!record) return '';
+  return record.valid
+    ? '<span class="badge approved">✓ Đã thành công</span>'
+    : '<span class="badge rejectedsm">Không hợp lệ</span>';
+}
+
 function renderActivityActionCards() {
   const cp = state.selectedCheckpoint;
-  const awaitingCheckout = activityCheckStatus.next_action === 'checkout';
+  const checkinRec = activityActionRecord('checkin');
+  const checkoutRec = activityActionRecord('checkout');
   const checkinBtn = document.getElementById('st-checkin-action');
   const checkoutBtn = document.getElementById('st-checkout-action');
-  const checkinTime = fmtCheckinTime(activityCheckStatus.checkin_timestamp);
 
-  checkinBtn.disabled = awaitingCheckout;
-  checkoutBtn.disabled = !awaitingCheckout;
-  checkinBtn.classList.toggle('active', nextActivityAction === 'checkin');
-  checkoutBtn.classList.toggle('active', nextActivityAction === 'checkout');
-  document.getElementById('st-checkin-state').innerText = awaitingCheckout ? `Đã check in lúc ${checkinTime || '—'}` : 'Sẵn sàng check in';
-  document.getElementById('st-checkout-state').innerText = awaitingCheckout ? 'Bấm để check out' : 'Cần check in trước';
-  document.getElementById('st-checkin-window').innerText = `Chấp nhận: ${fmtTimeDisplay(cp.checkin_start)} – ${fmtTimeDisplay(cp.checkin_end)}`;
-  document.getElementById('st-checkout-window').innerText = `Chấp nhận: ${fmtTimeDisplay(cp.checkout_start)} – ${fmtTimeDisplay(cp.checkout_end)}`;
+  checkinBtn.disabled = false;
+  checkoutBtn.disabled = !checkinRec && !checkoutRec;
+  checkinBtn.classList.toggle('active', selectedActivityAction === 'checkin');
+  checkoutBtn.classList.toggle('active', selectedActivityAction === 'checkout');
+  const doneState = rec => `Lúc ${fmtCheckinTime(rec.timestamp) || '—'} · ${rec.valid ? 'Bấm để xem kết quả' : 'Bấm để xem / làm lại'}`;
+  document.getElementById('st-checkin-state').innerText = checkinRec ? doneState(checkinRec) : 'Bấm để check in';
+  document.getElementById('st-checkout-state').innerText = checkoutRec
+    ? doneState(checkoutRec)
+    : (checkinRec ? 'Bấm để check out' : 'Cần check in trước');
+  document.getElementById('st-checkin-tag').innerHTML = activityActionTag(checkinRec);
+  document.getElementById('st-checkout-tag').innerHTML = activityActionTag(checkoutRec);
+  document.getElementById('st-checkin-window').innerText = `Thời gian ghi nhận: ${fmtTimeDisplay(cp.checkin_start)} – ${fmtTimeDisplay(cp.checkin_end)}`;
+  document.getElementById('st-checkout-window').innerText = `Thời gian ghi nhận: ${fmtTimeDisplay(cp.checkout_start)} – ${fmtTimeDisplay(cp.checkout_end)}`;
+}
+
+function renderActivityActionResult(action, record) {
+  const label = action === 'checkout' ? 'Check out' : 'Check in';
+  const reasons = [];
+  if (!record.time_valid) reasons.push('ngoài khung giờ cho phép');
+  if (record.distance_m != null && record.radius_m != null && Number(record.distance_m) > Number(record.radius_m)) reasons.push('ngoài phạm vi vị trí');
+  const photo = record.photo_thumb
+    ? `<img class="result-photo" src="${record.photo_thumb}" alt="Ảnh ${label}" title="Xem ảnh" onclick="openCheckinPhoto('${record.checkin_id}')">`
+    : (record.has_photo ? `<button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="openCheckinPhoto('${record.checkin_id}')">🖼️ Xem ảnh</button>` : '');
+  document.getElementById('st-action-result').innerHTML = `
+    <div class="eyebrow">Kết quả ${label}</div>
+    <div class="result-row"><span class="k">Trạng thái</span><span class="v">${activityActionTag(record)}</span></div>
+    <div class="result-row"><span class="k">Thời gian</span><span class="v mono">${fmtDate(record.timestamp)}</span></div>
+    ${record.distance_m != null ? `<div class="result-row"><span class="k">Khoảng cách</span><span class="v mono">${fmtDistance(record.distance_m)} (cho phép ${fmtDistance(record.radius_m)})</span></div>` : ''}
+    ${reasons.length ? `<div class="result-row"><span class="k">Lý do</span><span class="v">${reasons.join(', ')}</span></div>` : ''}
+    ${photo}
+    ${record.valid ? '' : `<button type="button" class="btn btn-primary" style="margin-top:14px;" onclick="retryActivityAction('${action}')">↻ ${label} lại</button>`}`;
+}
+
+// Bản ghi không hợp lệ -> cho làm lại: mở lại các bước check, lần ghi nhận
+// mới sẽ thay kết quả cũ trên màn này.
+function retryActivityAction(action) {
+  retryingActivityAction = action;
+  nextActivityAction = action;
+  resetCaptureForm();
+  renderActivityActionPanel();
+  document.getElementById('st-capture-steps').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Hiện đúng phần cho thao tác đang chọn: chưa chọn -> gợi ý; đã làm -> kết
+// quả; chưa làm -> các bước check.
+function renderActivityActionPanel() {
+  const action = selectedActivityAction;
+  const record = action ? activityActionRecord(action) : null;
+  const showResult = !!record && retryingActivityAction !== action;
+  document.getElementById('st-action-hint').hidden = !!action;
+  document.getElementById('st-action-result').hidden = !showResult;
+  document.getElementById('st-capture-steps').hidden = !action || showResult;
+  if (showResult) renderActivityActionResult(action, record);
+  // Check in lại khi đã có check out -> bắt đầu lượt mới, phải check out lại.
+  const retryNote = document.getElementById('st-retry-note');
+  retryNote.hidden = !(retryingActivityAction === 'checkin' && action === 'checkin' && activityActionRecord('checkout'));
+  const actionLabel = action === 'checkout' ? 'Check out' : 'Check in';
+  document.getElementById('st-checkin-action-title').innerText = action ? actionLabel.toUpperCase() : 'CHECK IN / OUT';
 }
 
 function chooseActivityAction(action) {
-  const awaitingCheckout = activityCheckStatus.next_action === 'checkout';
-  if ((action === 'checkout' && !awaitingCheckout) || (action === 'checkin' && awaitingCheckout)) return;
-  nextActivityAction = action;
+  const checkinRec = activityActionRecord('checkin');
+  const checkoutRec = activityActionRecord('checkout');
+  if (action === 'checkout' && !checkinRec && !checkoutRec) return;
+  if (selectedActivityAction !== action) {
+    selectedActivityAction = action;
+    retryingActivityAction = null;
+    if (!activityActionRecord(action)) {
+      nextActivityAction = action;
+      resetCaptureForm();
+    }
+  }
   renderActivityActionCards();
-  document.getElementById('st-checkin-action-title').innerText = action === 'checkout' ? 'CHECK OUT' : 'CHECK IN';
-  document.getElementById('submit-checkin-btn').innerHTML = `Ghi nhận ${action === 'checkout' ? 'Check out' : 'Check in'}`;
-  document.getElementById('st-gps-step').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  renderActivityActionPanel();
+  const target = activityActionRecord(action) && retryingActivityAction !== action ? 'st-action-result' : 'st-capture-steps';
+  document.getElementById(target).scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function goCheckinCapture() {
+function resetCaptureForm() {
   state.gps = null; state.photoBase64 = null; state.photoThumbBase64 = null;
   state.checkinId = genShortCode('CI'); // cố định cho lượt này -> chống ghi trùng nếu bấm nhiều lần
   document.getElementById('gps-dot').classList.remove('on');
@@ -1257,16 +1471,21 @@ function goCheckinCapture() {
   document.getElementById('photo-input').value = '';
   document.getElementById('photo-filename').innerText = 'Chưa chọn ảnh';
   const submitBtn = document.getElementById('submit-checkin-btn');
-  const actionLabel = nextActivityAction === 'checkout' ? 'Check out' : 'Check in';
   submitBtn.disabled = true;
-  submitBtn.innerHTML = `Ghi nhận ${actionLabel}`;
+  submitBtn.innerHTML = `Ghi nhận ${nextActivityAction === 'checkout' ? 'Check out' : 'Check in'}`;
   setCheckinProgress(0, false);
   banner('st-checkin-banner', '', '');
-  document.getElementById('st-checkin-action-title').innerText = actionLabel.toUpperCase();
+}
+
+function goCheckinCapture() {
+  selectedActivityAction = null;
+  retryingActivityAction = null;
+  resetCaptureForm();
   document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
   document.getElementById('st-activity-name').innerText = state.selectedCheckpoint.checkpoint_name;
   document.getElementById('st-activity-time').innerText = `Thời gian diễn ra: ${fmtDateOnly(state.selectedCheckpoint.event_start)} – ${fmtDateOnly(state.selectedCheckpoint.event_end)}`;
   renderActivityActionCards();
+  renderActivityActionPanel();
 
   const isOffline = state.selectedCheckpoint.activity_type !== 'online';
   document.getElementById('st-gps-step').style.display = isOffline ? 'block' : 'none';
@@ -1515,7 +1734,8 @@ function goAcceptanceHome() {
   // SA, SM và Admin đều có thể lập nghiệm thu. Trước đây Admin bị thiếu
   // khỏi điều kiện này nên chỉ nhìn thấy tab "Lịch sử duyệt".
   const isCreator = ['SA', 'SM', 'Admin'].includes(state.user.role);
-  const isApprover = state.user.role === 'SM';
+  // Admin có toàn quyền của SM, nên cũng duyệt được nghiệm thu.
+  const isApprover = ['SM', 'Admin'].includes(state.user.role);
   const tabs = [];
   if (isCreator) tabs.push({k:'new', label:'Hoạt động'});
   if (isApprover) tabs.push({k:'approval', label:'Chờ duyệt'});
@@ -1545,6 +1765,8 @@ let acceptanceReportOpenUsername = null;
 let acceptanceActivitiesCache = [];
 let acceptanceActivitySearch = '';
 let acceptanceActivityFilter = 'all';
+let acceptanceActivitySort = 'desc'; // desc = mới → cũ, asc = cũ → mới (theo thời gian ghi nhận)
+function setAcceptanceActivitySort(value) { acceptanceActivitySort = value; renderAcceptanceActivitiesView(); }
 let acceptanceSelectedActivityId = null;
 let acceptanceSelectedActivityName = '';
 let editingAcceptanceActivityId = null;
@@ -1595,11 +1817,83 @@ function goReport() {
   renderAcceptanceReport();
 }
 
+// Trạng thái bản nghiệm thu gần nhất của user cho 1 hoạt động.
+function acceptanceActivityState(activity) {
+  if (!(activity.has_submission === true || activity.has_submission === 'true')) return 'pending';
+  if (activity.my_status === 'RejectedSM') return 'rejected';
+  return activity.my_status === 'PendingSM' ? 'awaiting' : 'completed';
+}
+
+function acceptanceActivityBadge(activity) {
+  const st = acceptanceActivityState(activity);
+  if (st === 'rejected') return '<span class="badge rejectedsm"><span class="alert-dot"></span>Từ chối</span>';
+  if (st === 'awaiting') return '<span class="badge inprogress">Chờ duyệt</span>';
+  return st === 'completed' ? '<span class="badge approved">Hoàn thành</span>' : '<span class="badge pendingsm">Chờ thực hiện</span>';
+}
+
+/* ---- Chấm đỏ báo hiệu ở Check in / Nghiệm thu (sidebar + trang chủ) ----
+   Hiện khi có hoạt động MỚI được thêm sau lần cuối người dùng mở danh sách đó,
+   hoặc (Nghiệm thu) có bản bị từ chối. Mốc "đã xem" lưu theo từng tài khoản
+   trên trình duyệt; lần đầu coi các hoạt động tạo trong 3 ngày gần nhất là mới. */
+const NEW_ACTIVITY_LOOKBACK_MS = 3 * 86400000;
+
+function lastSeenAt(section) {
+  try {
+    const v = localStorage.getItem(`proagent_seen_${section}_${state.user.username}`);
+    if (v) return new Date(v).getTime();
+  } catch (e) { /* localStorage bị chặn -> dùng mốc mặc định */ }
+  return Date.now() - NEW_ACTIVITY_LOOKBACK_MS;
+}
+
+function markSeen(section) {
+  try { localStorage.setItem(`proagent_seen_${section}_${state.user.username}`, new Date().toISOString()); }
+  catch (e) { /* bỏ qua */ }
+}
+
+function newActivityIds(rows, idField, section) {
+  const since = lastSeenAt(section);
+  return new Set(rows.filter(r => r.created_at && new Date(r.created_at).getTime() > since).map(r => r[idField]));
+}
+
+function setNavDot(section, on) {
+  document.getElementById(`sb-${section}-dot`).hidden = !on;
+  document.getElementById(`home-${section}-dot`).hidden = !on;
+}
+
+function updateAcceptanceAlert(activities) {
+  const list = activities || [];
+  const hasRejected = list.some(a => acceptanceActivityState(a) === 'rejected');
+  const hasNew = newActivityIds(list, 'acceptance_activity_id', 'acceptance').size > 0;
+  setNavDot('acceptance', hasRejected || hasNew);
+}
+
+function updateCheckinAlert(checkpoints) {
+  setNavDot('checkin', newActivityIds(checkpoints || [], 'checkpoint_id', 'checkin').size > 0);
+}
+
+async function refreshNavAlerts() {
+  if (!state.user) return;
+  const [checkpoints, activities] = await Promise.all([
+    api('getCheckpointsForUser', { username: state.user.username }).catch(() => null),
+    api('listAcceptanceActivities', { username: state.user.username }).catch(() => null),
+  ]);
+  if (checkpoints) updateCheckinAlert(checkpoints);
+  if (activities) { acceptanceActivitiesCache = activities; updateAcceptanceAlert(activities); }
+}
+
+let acceptanceNewIds = new Set(); // hoạt động nghiệm thu mới trong lần mở danh sách này
+
 async function renderAcceptanceActivities() {
   const wrap = document.getElementById('acceptance-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
     acceptanceActivitiesCache = await api('listAcceptanceActivities', { username: state.user.username });
+    // Đánh dấu "Mới" theo mốc cũ rồi mới cập nhật mốc đã xem -> tag còn trong
+    // lần mở này, chấm đỏ ở menu tắt ngay.
+    acceptanceNewIds = newActivityIds(acceptanceActivitiesCache, 'acceptance_activity_id', 'acceptance');
+    acceptanceViewedFilters = new Set([acceptanceActivityFilter]);
+    markSeen('acceptance');
+    updateAcceptanceAlert(acceptanceActivitiesCache);
     renderAcceptanceActivitiesView();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
@@ -1613,23 +1907,36 @@ function setAcceptanceActivitySearch(value) {
 
 function setAcceptanceActivityFilter(value) {
   acceptanceActivityFilter = value;
+  acceptanceViewedFilters.add(value);
   renderAcceptanceActivitiesView();
+}
+let acceptanceViewedFilters = new Set(['all']); // tag lọc đã bấm xem trong lần mở danh sách này
+
+// Chấm đỏ trên tag lọc: có hoạt động mới thuộc tag đó, hoặc (Từ chối) có bản
+// bị từ chối — mất khi người dùng bấm vào xem tag.
+function acceptanceFilterHasDot(filter) {
+  if (acceptanceViewedFilters.has(filter)) return false;
+  return acceptanceActivitiesCache.some(a => {
+    const st = acceptanceActivityState(a);
+    if (filter === 'rejected' && st === 'rejected') return true;
+    return acceptanceNewIds.has(a.acceptance_activity_id) && (filter === 'all' || st === filter);
+  });
 }
 
 function renderAcceptanceActivitiesView() {
   const wrap = document.getElementById('acceptance-tab-content');
   const canCreate = state.user.role === 'Admin';
-  const isCompleted = activity => activity.has_submission === true || activity.has_submission === 'true';
   const activities = filterRows(acceptanceActivitiesCache, acceptanceActivitySearch, ['activity_name', 'description'])
-    .filter(a => acceptanceActivityFilter === 'all' || (acceptanceActivityFilter === 'completed' ? isCompleted(a) : !isCompleted(a)))
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    .filter(a => acceptanceActivityFilter === 'all' || acceptanceActivityState(a) === acceptanceActivityFilter)
+    .sort((a, b) => (acceptanceActivitySort === 'asc' ? 1 : -1)
+      * ((new Date(a.record_start) - new Date(b.record_start)) || (new Date(a.record_end) - new Date(b.record_end))));
   const toolbar = `<div class="activity-toolbar">
     <input id="nt-activity-search" placeholder="🔍 Tìm theo tên hoạt động..." value="${acceptanceActivitySearch}" oninput="setAcceptanceActivitySearch(this.value)">
     ${canCreate ? '<button class="btn btn-primary" onclick="goAcceptanceActivityNew()">+ Tạo hoạt động</button>' : ''}
-  </div><div class="activity-filters" aria-label="Lọc hoạt động nghiệm thu">
-    <button class="activity-filter ${acceptanceActivityFilter==='all'?'active':''}" onclick="setAcceptanceActivityFilter('all')">Tất cả</button>
-    <button class="activity-filter ${acceptanceActivityFilter==='pending'?'active':''}" onclick="setAcceptanceActivityFilter('pending')">Chờ thực hiện</button>
-    <button class="activity-filter ${acceptanceActivityFilter==='completed'?'active':''}" onclick="setAcceptanceActivityFilter('completed')">Hoàn thành</button>
+  </div><div class="activity-filters split" aria-label="Lọc và sắp xếp hoạt động nghiệm thu">
+    <span class="chip-group">${[['all', 'Tất cả'], ['pending', 'Chờ thực hiện'], ['awaiting', 'Chờ duyệt'], ['completed', 'Hoàn thành'], ['rejected', 'Từ chối']].map(([value, label]) =>
+      `<button class="activity-filter ${acceptanceActivityFilter === value ? 'active' : ''}" onclick="setAcceptanceActivityFilter('${value}')">${label}${acceptanceFilterHasDot(value) ? '<span class="nav-dot chip-dot"></span>' : ''}</button>`).join('')}</span>
+    ${sortDropdownHtml(acceptanceActivitySort, 'setAcceptanceActivitySort')}
   </div>`;
   if (!acceptanceActivitiesCache.length) {
     wrap.innerHTML = `${toolbar}<div class="empty"><div class="big">📭</div>Chưa có hoạt động nghiệm thu nào.</div>`;
@@ -1639,10 +1946,10 @@ function renderAcceptanceActivitiesView() {
     wrap.innerHTML = `${toolbar}<div class="empty">Không tìm thấy hoạt động nào khớp.</div>`;
     return;
   }
-  wrap.innerHTML = `${toolbar}<div class="card">${activities.map(a => `
-      <div class="row" style="cursor:pointer;" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div class="l"><div class="t">${a.activity_name} <span class="badge ${isCompleted(a)?'approved':'pendingsm'}">${isCompleted(a)?'Hoàn thành':'Chờ thực hiện'}</span></div><div class="s">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}</div>
-        <div class="r">${canCreate ? `<div style="display:flex;gap:12px;"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : '<span class="chev">›</span>'}</div>
+  wrap.innerHTML = `${toolbar}<div class="pick-grid">${activities.map(a => `
+      <div class="pick" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
+        <div><div class="t">${a.activity_name} ${acceptanceNewIds.has(a.acceptance_activity_id) ? '<span class="badge new">Mới</span> ' : ''}${acceptanceActivityBadge(a)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}<div class="s event-time">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div></div>
+        ${canCreate ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : ''}
       </div>`).join('')}</div>`;
 }
 
@@ -1724,7 +2031,6 @@ function setAcceptanceReportMonth(month) {
 }
 
 function reportMonthPickerHtml(selectedMonth) {
-  const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
   const selectedYear = Number((selectedMonth || '').slice(0, 4)) || new Date().getFullYear();
   const currentYear = new Date().getFullYear();
   const firstYear = Math.min(selectedYear, currentYear - 2);
@@ -1733,7 +2039,7 @@ function reportMonthPickerHtml(selectedMonth) {
   for (let year = lastYear; year >= firstYear; year--) {
     for (let month = 12; month >= 1; month--) {
       const value = `${year}-${String(month).padStart(2, '0')}`;
-      options.push(`<option value="${value}" ${value === selectedMonth ? 'selected' : ''}>${monthNames[month - 1]} năm ${year}</option>`);
+      options.push(`<option value="${value}" ${value === selectedMonth ? 'selected' : ''}>${String(month).padStart(2, '0')}/${year}</option>`);
     }
   }
   return `<select id="report-month" onchange="setAcceptanceReportMonth(this.value)">${options.join('')}</select>`;
@@ -1866,6 +2172,64 @@ function goAcceptanceNewForm(prefill) {
   }
   // Mô tả của hoạt động là hướng dẫn từ Admin, không tự điền vào ghi chú của người gửi.
   document.getElementById('nt-description').value = isResubmission ? (prefill.description || '') : '';
+  // Tạo lại từ bản bị từ chối của hoạt động đã gửi -> mở sẵn form gửi lại, đè lên bản cũ.
+  acceptanceOverwriteMode = isResubmission && !!(selectedAcceptanceActivity() || {}).my_acceptance_id;
+  renderAcceptanceActivitySummary();
+  renderAcceptanceSubmissionState();
+}
+
+let acceptanceOverwriteMode = false; // đang gửi duyệt lại, đè lên bản đã gửi
+
+function selectedAcceptanceActivity() {
+  return acceptanceActivitiesCache.find(a => a.acceptance_activity_id === acceptanceSelectedActivityId) || null;
+}
+
+function isWithinRecordPeriod(activity) {
+  const now = Date.now();
+  return now >= new Date(activity.record_start).getTime() && now <= new Date(activity.record_end).getTime();
+}
+
+// Đã gửi cho hoạt động này -> hiện bản đã gửi, form chỉ mở khi bấm "Gửi duyệt
+// lại" (và chỉ khi còn trong thời gian ghi nhận). Chưa gửi -> hiện form như cũ.
+function renderAcceptanceSubmissionState() {
+  const activity = selectedAcceptanceActivity();
+  const existingId = activity && activity.my_acceptance_id;
+  const open = !activity || isWithinRecordPeriod(activity);
+  const existing = document.getElementById('nt-existing');
+  existing.hidden = !existingId;
+  if (existingId) {
+    existing.innerHTML = `
+      <div class="eyebrow">Bản đã gửi</div>
+      <div class="result-row"><span class="k">Trạng thái</span><span class="v"><span class="badge ${String(activity.my_status).toLowerCase()}">${statusLabel(activity.my_status)}</span></span></div>
+      <div class="result-row"><span class="k">Gửi lúc</span><span class="v mono">${fmtDate(activity.my_submitted_at)}</span></div>
+      <button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="openAcceptanceDetail('${existingId}')">Xem bản đã gửi</button>
+      ${open && !acceptanceOverwriteMode ? `<button type="button" class="btn btn-primary" style="margin-top:10px;" onclick="startAcceptanceOverwrite()">↻ Gửi duyệt lại</button>` : ''}
+      ${open && acceptanceOverwriteMode ? `<div class="hint">Bản gửi lại sẽ thay thế bản đã gửi ở trên và quay về trạng thái chờ duyệt.</div>` : ''}`;
+  }
+  document.getElementById('nt-closed-note').hidden = open;
+  document.getElementById('nt-form').hidden = !open || (!!existingId && !acceptanceOverwriteMode);
+  document.getElementById('nt-submit-btn').innerText = acceptanceOverwriteMode ? 'Gửi duyệt lại' : 'Gửi duyệt';
+}
+
+function startAcceptanceOverwrite() {
+  acceptanceOverwriteMode = true;
+  renderAcceptanceSubmissionState();
+  document.getElementById('nt-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Tóm tắt hoạt động nghiệm thu đang gửi (giống phần tóm tắt bên Check in).
+function renderAcceptanceActivitySummary() {
+  const activity = selectedAcceptanceActivity();
+  const name = (activity && activity.activity_name) || acceptanceSelectedActivityName;
+  document.getElementById('nt-activity-summary').hidden = !name;
+  document.getElementById('nt-activity-sub').innerText = name || 'Gửi ảnh chụp màn hình';
+  if (!name) return;
+  document.getElementById('nt-activity-name').innerText = name;
+  document.getElementById('nt-activity-desc').innerText = activity ? (activity.description || '') : '';
+  document.getElementById('nt-activity-time').innerText = activity ? `Thời gian ghi nhận: ${fmtDate(activity.record_start)} – ${fmtDate(activity.record_end)}` : '';
+  document.getElementById('nt-activity-status').innerHTML = activity
+    ? acceptanceActivityBadge(activity)
+    : '';
 }
 
 function onAcceptancePhotoSelected(evt) {
@@ -1905,7 +2269,8 @@ async function submitAcceptanceNow() {
     screenshot_base64: state.acceptancePhotoBase64,
     screenshot_thumb_base64: state.acceptancePhotoThumbBase64,
     resubmitted_from: state.acceptanceResubmitFrom || '',
-    acceptance_activity_id: acceptanceSelectedActivityId || ''
+    acceptance_activity_id: acceptanceSelectedActivityId || '',
+    overwrite_acceptance_id: acceptanceOverwriteMode ? (selectedAcceptanceActivity() || {}).my_acceptance_id || '' : ''
   };
 
   isSubmittingAcceptance = true;
@@ -1916,7 +2281,7 @@ async function submitAcceptanceNow() {
 
   try {
     await api('createAcceptance', payload);
-    banner('nt-banner','ok','Đã gửi nghiệm thu đi duyệt.');
+    banner('nt-banner','ok', acceptanceOverwriteMode ? 'Đã gửi duyệt lại, bản cũ đã được thay thế.' : 'Đã gửi nghiệm thu đi duyệt.');
     state.acceptanceResubmitFrom = null;
     setTimeout(goAcceptanceHistory, 900);
   } catch (e) {
@@ -1936,7 +2301,7 @@ async function openAcceptanceDetail(id) {
   try {
     const m = await api('getAcceptanceById', { acceptance_id: id });
     currentAcceptanceDetail = m;
-    const canApprove = state.user.role === 'SM' && m.status === 'PendingSM';
+    const canApprove = ['SM', 'Admin'].includes(state.user.role) && m.status === 'PendingSM';
     const canResubmit = m.status === 'RejectedSM' && m.creator_username === state.user.username;
     body.innerHTML = `
       <div class="card">

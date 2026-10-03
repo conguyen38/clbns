@@ -10,7 +10,7 @@ function haversine(lat1, lon1, lat2, lon2) {
 
 const CHECKPOINT_COLUMNS = `checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m,
   event_start::text AS event_start, event_end::text AS event_end,
-  checkin_start, checkin_end, checkout_start, checkout_end`;
+  checkin_start, checkin_end, checkout_start, checkout_end, created_at`;
 
 // Giờ Việt Nam (UTC+7, không có DST) dùng để so khung giờ check in/out trong ngày,
 // tính độc lập với timezone máy chủ chạy Node.
@@ -203,9 +203,28 @@ ACTIONS.adminDeleteCheckpoint = async (pool, data) => {
   return { ok: true };
 };
 
-ACTIONS.getCheckpointsForUser = async (pool) => {
-  const { rows } = await pool.query(`SELECT ${CHECKPOINT_COLUMNS} FROM checkpoints ORDER BY checkpoint_name`);
-  return rows;
+// Kèm trạng thái check hôm nay của user cho từng hoạt động (cùng cách tính với
+// getActivityCheckStatus) để danh sách lọc theo trạng thái và gắn tag.
+ACTIONS.getCheckpointsForUser = async (pool, data) => {
+  const [{ rows }, { rows: logs }] = await Promise.all([
+    pool.query(`SELECT ${CHECKPOINT_COLUMNS} FROM checkpoints ORDER BY checkpoint_name`),
+    pool.query(
+      `SELECT checkpoint_id, action_type, valid FROM checkins
+       WHERE username=$1 AND timestamp::date = CURRENT_DATE
+       ORDER BY timestamp DESC`,
+      [data.username || '']
+    )
+  ]);
+  return rows.map(cp => {
+    const cpLogs = logs.filter(l => l.checkpoint_id === cp.checkpoint_id);
+    const last = cpLogs[0];
+    const checkin = cpLogs.find(l => l.action_type === 'checkin');
+    if (!last) return { ...cp, check_status: 'none', check_valid: null };
+    if (last.action_type === 'checkout') {
+      return { ...cp, check_status: 'completed', check_valid: !!last.valid && (!checkin || !!checkin.valid) };
+    }
+    return { ...cp, check_status: 'checked_in', check_valid: !!last.valid };
+  });
 };
 
 // Xác định hành động tiếp theo của user với 1 hoạt động: nếu lần gần nhất
@@ -213,18 +232,26 @@ ACTIONS.getCheckpointsForUser = async (pool) => {
 // ngược lại (chưa làm gì hôm nay, hoặc lần gần nhất đã là checkout) -> checkin.
 ACTIONS.getActivityCheckStatus = async (pool, data) => {
   const { rows } = await pool.query(
-    `SELECT action_type, timestamp FROM checkins
+    `SELECT checkin_id, action_type, timestamp, valid, time_valid, distance_m, radius_m, photo_thumb, (photo_url <> '') AS has_photo
+     FROM checkins
      WHERE username=$1 AND checkpoint_id=$2 AND timestamp::date = CURRENT_DATE
-     ORDER BY timestamp DESC LIMIT 1`,
+     ORDER BY timestamp DESC`,
     [data.username, data.activity_id]
   );
   const last = rows[0];
   const awaitingCheckout = last && last.action_type === 'checkin';
+  // Kết quả của lượt gần nhất hôm nay: lần check out mới nhất (nếu lượt đã
+  // xong) và lần check in đứng ngay trước nó -> giao diện hiển thị kết quả
+  // thay vì các bước check cho thao tác đã làm.
+  const checkout = last && last.action_type === 'checkout' ? last : null;
+  const checkin = rows.find(r => r.action_type === 'checkin') || null;
   return {
     next_action: awaitingCheckout ? 'checkout' : 'checkin',
     // Trả lại giờ check in gần nhất để giao diện khóa ô Check in và hiển thị
     // chính xác thời điểm nhân viên đã thực hiện thao tác này.
-    checkin_timestamp: awaitingCheckout ? last.timestamp : null
+    checkin_timestamp: awaitingCheckout ? last.timestamp : null,
+    checkin,
+    checkout
   };
 };
 
@@ -294,11 +321,14 @@ const ACCEPTANCE_LIST_COLUMNS = `acceptance_id, acceptance_code, creator_usernam
 ACTIONS.listAcceptanceActivities = async (pool, data) => {
   const { rows } = await pool.query(
     `SELECT aa.acceptance_activity_id, aa.activity_name, aa.description, aa.record_start, aa.record_end, aa.created_by, aa.created_at,
-       EXISTS (
-         SELECT 1 FROM acceptances ac
-         WHERE ac.acceptance_activity_id=aa.acceptance_activity_id AND ac.creator_username=$1
-       ) AS has_submission
+       (mine.acceptance_id IS NOT NULL) AS has_submission,
+       mine.acceptance_id AS my_acceptance_id, mine.status AS my_status, mine.created_at AS my_submitted_at
      FROM acceptance_activities aa
+     LEFT JOIN LATERAL (
+       SELECT ac.acceptance_id, ac.status, ac.created_at FROM acceptances ac
+       WHERE ac.acceptance_activity_id=aa.acceptance_activity_id AND ac.creator_username=$1
+       ORDER BY ac.created_at DESC LIMIT 1
+     ) mine ON true
      WHERE aa.active=true
      ORDER BY aa.created_at DESC, aa.activity_name`,
     [data.username]
@@ -372,6 +402,24 @@ ACTIONS.createAcceptance = async (pool, data) => {
   // SM và Admin là các cấp cao nhất trong luồng hiện tại (không còn SSM),
   // nên nghiệm thu do họ tự tạo được coi là đã duyệt.
   const status = ['SM', 'Admin'].includes(acc.role) ? 'Approved' : 'PendingSM';
+
+  // Gửi duyệt lại cho hoạt động đã hoàn thành: ghi đè lên bản đã gửi trước
+  // đó (vẫn phải trong thời gian ghi nhận — đã kiểm tra ở trên) và quay lại
+  // chờ duyệt, thay vì tạo thêm bản mới.
+  if (data.overwrite_acceptance_id) {
+    if (!data.acceptance_activity_id) throw new Error('Thiếu hoạt động nghiệm thu.');
+    const result = await pool.query(
+      `UPDATE acceptances
+       SET acceptance_code=$3, description=$4, screenshot_url=$5, screenshot_thumb=$6, status=$7,
+           sm_note='', ssm_note='', created_at=now()
+       WHERE acceptance_id=$1 AND creator_username=$2 AND acceptance_activity_id=$8`,
+      [data.overwrite_acceptance_id, acc.username, data.acceptance_code || '', data.description || '',
+       data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.acceptance_activity_id]
+    );
+    if (!result.rowCount) throw new Error('Không tìm thấy bản nghiệm thu đã gửi.');
+    return { acceptance_id: data.overwrite_acceptance_id };
+  }
+
   const acceptanceId = require('crypto').randomUUID();
   await pool.query(
     `INSERT INTO acceptances (acceptance_id, acceptance_code, creator_username, creator_name, creator_role,
@@ -386,8 +434,12 @@ ACTIONS.createAcceptance = async (pool, data) => {
 ACTIONS.listAcceptancesForApproval = async (pool, data) => {
   const { rows: accounts } = await pool.query('SELECT * FROM accounts');
   const { rows: items } = await pool.query(`SELECT ${ACCEPTANCE_LIST_COLUMNS} FROM acceptances ORDER BY created_at DESC`);
+  const requester = accounts.find(a => a.username === data.username);
+  const pending = items.filter(m => m.status === 'PendingSM');
+  // Admin là cấp cao nhất, có toàn quyền của SM -> thấy mọi bản chờ duyệt.
+  if (requester && requester.role === 'Admin') return pending;
   const directReports = new Set(accounts.filter(a => a.manager_username === data.username).map(a => a.username));
-  return items.filter(m => m.status === 'PendingSM' && directReports.has(m.creator_username));
+  return pending.filter(m => directReports.has(m.creator_username));
 };
 
 ACTIONS.listAcceptances = async (pool, data) => {
@@ -535,8 +587,8 @@ ACTIONS.approveAcceptance = async (pool, data) => {
   const { rows } = await pool.query('SELECT * FROM acceptances WHERE acceptance_id=$1', [data.acceptance_id]);
   const m = rows[0];
   if (!m) throw new Error('Không tìm thấy hoạt động nghiệm thu.');
-  if (data.role === 'SM') {
-    if (m.status !== 'PendingSM') throw new Error('Hoạt động không ở trạng thái chờ SM duyệt.');
+  if (['SM', 'Admin'].includes(data.role)) {
+    if (m.status !== 'PendingSM') throw new Error('Hoạt động không ở trạng thái chờ duyệt.');
     await pool.query('UPDATE acceptances SET status=$2, sm_note=$3 WHERE acceptance_id=$1',
       [data.acceptance_id, data.decision === 'approve' ? 'Approved' : 'RejectedSM', data.note || '']);
   } else {
