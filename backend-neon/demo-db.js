@@ -37,6 +37,10 @@ async function seed(db) {
        VALUES ($1,$2,$3,$4,$5,$6,true) ON CONFLICT (username) DO NOTHING`, a);
   }
 
+  await db.query(`UPDATE accounts SET branch_code = CASE username
+    WHEN 'sa01' THEN 'CN001' WHEN 'sa02' THEN 'CN002' WHEN 'sa03' THEN 'CN002'
+    WHEN 'sa04' THEN 'CN003' WHEN 'sa05' THEN 'CN003' ELSE '' END`);
+
   await db.query(`INSERT INTO regions VALUES ('HN','Hà Nội','sm01'), ('HCM','TP. Hồ Chí Minh','sm02')`);
   await db.query(`INSERT INTO branches VALUES
     ('CN001','Chi nhánh Hoàn Kiếm','HN',21.0285,105.8542,150),

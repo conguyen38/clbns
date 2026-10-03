@@ -101,6 +101,9 @@ ALTER TABLE acceptances ADD COLUMN IF NOT EXISTS acceptance_activity_id text;
 ALTER TABLE checkpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT '2000-01-01T00:00:00Z';
 ALTER TABLE checkpoints ALTER COLUMN created_at SET DEFAULT now();
 
+-- Chi nhánh của nhân viên (lọc báo cáo theo chi nhánh).
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS branch_code text NOT NULL DEFAULT '';
+
 CREATE INDEX IF NOT EXISTS idx_checkins_username ON checkins(username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_creator ON acceptances(creator_username);
 CREATE INDEX IF NOT EXISTS idx_acceptances_status ON acceptances(status);

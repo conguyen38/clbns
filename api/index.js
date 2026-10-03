@@ -9,18 +9,32 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 
 // Migration nhỏ tự chạy khi server khởi động (chỉ 1 lần mỗi instance): thêm
-// cột checkpoints.created_at nếu database chưa có. Hoạt động đã có từ trước
-// được gán mốc cũ để không bị báo là "Mới"; hoạt động tạo sau lấy now().
+// các cột mới nếu database chưa có (giống backend-neon/schema.sql).
+//  - checkpoints.created_at: hoạt động đã có từ trước được gán mốc cũ để không
+//    bị báo là "Mới"; hoạt động tạo sau lấy now().
+//  - accounts.branch_code: chi nhánh của nhân viên (lọc báo cáo).
+const SCHEMA_MIGRATIONS = [
+  { table: 'checkpoints', column: 'created_at', sql: [
+    `ALTER TABLE checkpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT '2000-01-01T00:00:00Z'`,
+    `ALTER TABLE checkpoints ALTER COLUMN created_at SET DEFAULT now()`,
+  ] },
+  { table: 'accounts', column: 'branch_code', sql: [
+    `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS branch_code text NOT NULL DEFAULT ''`,
+  ] },
+];
 let schemaReady = null;
 function ensureSchema(pool) {
   if (!schemaReady) {
     schemaReady = (async () => {
       const { rows } = await pool.query(
-        `SELECT 1 FROM information_schema.columns WHERE table_name='checkpoints' AND column_name='created_at'`
+        `SELECT table_name, column_name FROM information_schema.columns
+         WHERE (table_name, column_name) IN (('checkpoints','created_at'), ('accounts','branch_code'))`
       );
-      if (rows.length) return;
-      await pool.query(`ALTER TABLE checkpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT '2000-01-01T00:00:00Z'`);
-      await pool.query(`ALTER TABLE checkpoints ALTER COLUMN created_at SET DEFAULT now()`);
+      const existing = new Set(rows.map(r => `${r.table_name}.${r.column_name}`));
+      for (const m of SCHEMA_MIGRATIONS) {
+        if (existing.has(`${m.table}.${m.column}`)) continue;
+        for (const stmt of m.sql) await pool.query(stmt);
+      }
     })().catch(err => { schemaReady = null; throw err; });
   }
   return schemaReady;
@@ -79,8 +93,8 @@ ACTIONS.adminCreateAccount = async (pool, data) => {
   const exists = await pool.query('SELECT 1 FROM accounts WHERE username=$1', [username]);
   if (exists.rows.length) throw new Error('Username đã tồn tại.');
   await pool.query(
-    'INSERT INTO accounts (username, password, full_name, role, manager_username, region_codes, active) VALUES ($1,$2,$3,$4,$5,$6,true)',
-    [username, password, full_name, role, data.manager_username || '', data.region_codes || '']
+    'INSERT INTO accounts (username, password, full_name, role, manager_username, region_codes, branch_code, active) VALUES ($1,$2,$3,$4,$5,$6,$7,true)',
+    [username, password, full_name, role, data.manager_username || '', data.region_codes || '', data.branch_code || '']
   );
   return { ok: true };
 };
@@ -92,7 +106,9 @@ ACTIONS.adminSetAccountActive = async (pool, data) => {
 };
 
 ACTIONS.adminUpdateAccount = async (pool, data) => {
-  const fields = ['full_name', 'role', 'manager_username', 'region_codes', 'password'].filter(f => data[f] !== undefined && data[f] !== '');
+  // branch_code được phép gửi rỗng để bỏ gán chi nhánh.
+  const fields = ['full_name', 'role', 'manager_username', 'region_codes', 'password'].filter(f => data[f] !== undefined && data[f] !== '')
+    .concat(data.branch_code !== undefined ? ['branch_code'] : []);
   if (!fields.length) return { ok: true };
   const setClause = fields.map((f, i) => `${f}=$${i + 2}`).join(', ');
   const values = fields.map(f => data[f]);
@@ -479,7 +495,7 @@ async function getReportScope(pool, username) {
   const requester = accountRows[0];
   if (!requester || !['SM', 'Admin'].includes(requester.role)) throw new Error('Vai trò không có quyền xem báo cáo.');
 
-  const { rows: accounts } = await pool.query('SELECT username, full_name, role FROM accounts WHERE active=true ORDER BY full_name, username');
+  const { rows: accounts } = await pool.query('SELECT username, full_name, role, manager_username, region_codes, branch_code FROM accounts WHERE active=true ORDER BY full_name, username');
   if (requester.role === 'Admin') {
     return { requester, users: accounts.filter(a => a.role !== 'Admin') };
   }
@@ -513,7 +529,17 @@ async function getExpectedMonthlyActivities(pool, start, end) {
 ACTIONS.getMonthlyActivityReport = async (pool, data) => {
   const { month, start, end } = reportMonthBounds(data.month);
   const { users: scopedUsers } = await getReportScope(pool, data.username);
-  if (!scopedUsers.length) return { month, rows: [] };
+  // Danh sách vùng / chi nhánh cho bộ lọc báo cáo.
+  const [{ rows: regions }, { rows: branches }, { rows: managers }] = await Promise.all([
+    pool.query('SELECT region_code, region_name FROM regions ORDER BY region_code'),
+    pool.query('SELECT branch_code, branch_name, region_code FROM branches ORDER BY branch_name'),
+    pool.query('SELECT username, region_codes FROM accounts'),
+  ]);
+  if (!scopedUsers.length) return { month, rows: [], regions, branches };
+  // SA không ghi vùng riêng thì dùng chung vùng của SM quản lý mình.
+  const regionsByUser = new Map(managers.map(a => [a.username, a.region_codes || '']));
+  const userRegions = a => String(a.region_codes || regionsByUser.get(a.manager_username) || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
 
   const usernames = scopedUsers.map(a => a.username);
   const { checkpoints, acceptanceActivities } = await getExpectedMonthlyActivities(pool, start, end);
@@ -541,9 +567,13 @@ ACTIONS.getMonthlyActivityReport = async (pool, data) => {
   const acceptanceTotals = new Map(acceptances.rows.map(r => [r.username, r.total]));
   return {
     month,
+    regions,
+    branches,
     rows: scopedUsers.map(a => ({
       username: a.username,
       full_name: a.full_name,
+      region_codes: userRegions(a),
+      branch_code: a.branch_code || '',
       checkin_activities: checkinTotals.get(a.username) || 0,
       checkin_total: checkpoints.length,
       acceptance_activities: acceptanceTotals.get(a.username) || 0,

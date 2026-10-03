@@ -281,10 +281,14 @@
     .dtable th.num, .dtable td.num{text-align:left;}
     .dtable td.mono, .dtable td.nowrap{white-space:nowrap;}
     .report-row{cursor:pointer;}
-    .report-row td:first-child::after{content:'⌄';display:inline-block;margin-left:8px;color:var(--slate);font-size:16px;transition:transform .15s ease;}
-    .report-row.open td:first-child::after{transform:rotate(180deg);}
+    .dtable td.toggle-cell,.dtable th.toggle-cell{width:40px;text-align:right;}
+    .report-row td.toggle-cell::after{content:'⌄';display:inline-block;color:var(--slate);font-size:16px;transition:transform .15s ease;}
+    .report-row.open td.toggle-cell::after{transform:rotate(180deg);}
     .report-detail-row td{padding:0;background:#F7F8F8;}
   }
+  .report-toolbar{align-items:flex-end;}
+  .report-toolbar .report-field{flex:1;min-width:180px;}
+  .report-toolbar .report-field .eyebrow{margin-bottom:6px;}
   .report-progress{font-weight:700;color:var(--ink);}
   .report-progress .total{color:var(--slate);font-weight:500;}
   .report-detail{padding:16px 18px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;background:#F7F8F8;}
@@ -309,6 +313,7 @@
   .empty .big{font-size:34px;margin-bottom:8px;}
 
   .tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .tab-count{display:inline-block;min-width:18px;padding:1px 6px;margin-left:6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;font-weight:700;line-height:16px;text-align:center;}
   .tab{flex:1;text-align:center;padding:10px 4px;font-size:12.5px;font-weight:600;color:var(--slate);cursor:pointer;border-bottom:2px solid transparent;}
   .tab.active{color:var(--ink);border-color:var(--amber);}
 
@@ -1334,7 +1339,7 @@ function renderCheckpointList() {
   const isAdmin = state.user.role === 'Admin';
   wrap.innerHTML = filtered.map(cp => `
     <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
-      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}${stCheckpointNewIds.has(cp.checkpoint_id) ? '<span class="badge new" style="margin-left:6px;">Mới</span>' : ''}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s event-time">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div>${checkpointStatusTag(cp) ? `<div class="check-tag">${checkpointStatusTag(cp)}</div>` : ''}</div>
+      <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}${isRecentlyCreated(cp) ? `<span style="margin-left:6px;">${newActivityTag(cp)}</span>` : ''}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s event-time">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div>${checkpointStatusTag(cp) ? `<div class="check-tag">${checkpointStatusTag(cp)}</div>` : ''}</div>
       ${isAdmin ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()">
         <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="goSitetourCreateActivity('${cp.checkpoint_id}')">Sửa</button>
         <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteSitetourActivity('${cp.checkpoint_id}', event)">Xóa</button>
@@ -1745,9 +1750,25 @@ function goAcceptanceHome() {
   // divider. Keep the tabs visible when an SM also has "Chờ duyệt".
   tabsEl.style.display = tabs.length > 1 ? 'flex' : 'none';
   tabsEl.innerHTML = tabs.map(t =>
-    `<div class="tab ${t.k===state.acceptanceTab?'active':''}" data-tab="${t.k}" onclick="switchAcceptanceTab('${t.k}')">${t.label}</div>`).join('');
+    `<div class="tab ${t.k===state.acceptanceTab?'active':''}" data-tab="${t.k}" onclick="switchAcceptanceTab('${t.k}')">${t.label}${t.k === 'approval' ? '<span class="tab-count" id="approval-count" hidden></span>' : ''}</div>`).join('');
   showScreen('screen-acceptance-home');
   renderAcceptanceTab();
+  if (isApprover) refreshApprovalCount();
+}
+
+// Số bản nghiệm thu đang chờ duyệt, hiện cạnh tab "Chờ duyệt".
+function setApprovalCount(n) {
+  const el = document.getElementById('approval-count');
+  if (!el) return;
+  el.innerText = n;
+  el.hidden = !n;
+}
+
+async function refreshApprovalCount() {
+  try {
+    const rows = await api('listAcceptancesForApproval', { username: state.user.username });
+    setApprovalCount(rows.length);
+  } catch (e) { /* chỉ là số đếm, lỗi thì bỏ qua */ }
 }
 
 function switchAcceptanceTab(k) {
@@ -1783,6 +1804,7 @@ async function renderAcceptanceTab() {
   try {
     if (state.acceptanceTab === 'approval') {
       acceptanceRowsCache = await api('listAcceptancesForApproval', { username: state.user.username });
+      setApprovalCount(acceptanceRowsCache.length);
       acceptanceRowsIsApproval = true;
     } else {
       acceptanceRowsCache = await api('listAcceptances', { username: state.user.username, role: state.user.role });
@@ -1831,11 +1853,20 @@ function acceptanceActivityBadge(activity) {
   return st === 'completed' ? '<span class="badge approved">Hoàn thành</span>' : '<span class="badge pendingsm">Chờ thực hiện</span>';
 }
 
-/* ---- Chấm đỏ báo hiệu ở Check in / Nghiệm thu (sidebar + trang chủ) ----
-   Hiện khi có hoạt động MỚI được thêm sau lần cuối người dùng mở danh sách đó,
-   hoặc (Nghiệm thu) có bản bị từ chối. Mốc "đã xem" lưu theo từng tài khoản
-   trên trình duyệt; lần đầu coi các hoạt động tạo trong 3 ngày gần nhất là mới. */
-const NEW_ACTIVITY_LOOKBACK_MS = 3 * 86400000;
+/* ---- Hoạt động "Mới" và chấm đỏ báo hiệu ở Check in / Nghiệm thu ----
+   Hoạt động được coi là mới trong 1 ngày kể từ lúc tạo: tag "Mới" trên card
+   hiện trong khoảng đó rồi tự mất. Chấm đỏ (sidebar, trang chủ, tag lọc) chỉ
+   báo các hoạt động mới mà người dùng CHƯA mở danh sách để xem, hoặc (Nghiệm
+   thu) có bản bị từ chối. Mốc "đã xem" lưu theo từng tài khoản trên trình duyệt. */
+const NEW_ACTIVITY_LOOKBACK_MS = 86400000;
+
+function isRecentlyCreated(row) {
+  return !!row.created_at && Date.now() - new Date(row.created_at).getTime() < NEW_ACTIVITY_LOOKBACK_MS;
+}
+
+function newActivityTag(row) {
+  return isRecentlyCreated(row) ? '<span class="badge new">Mới</span>' : '';
+}
 
 function lastSeenAt(section) {
   try {
@@ -1852,7 +1883,7 @@ function markSeen(section) {
 
 function newActivityIds(rows, idField, section) {
   const since = lastSeenAt(section);
-  return new Set(rows.filter(r => r.created_at && new Date(r.created_at).getTime() > since).map(r => r[idField]));
+  return new Set(rows.filter(r => isRecentlyCreated(r) && new Date(r.created_at).getTime() > since).map(r => r[idField]));
 }
 
 function setNavDot(section, on) {
@@ -1948,7 +1979,7 @@ function renderAcceptanceActivitiesView() {
   }
   wrap.innerHTML = `${toolbar}<div class="pick-grid">${activities.map(a => `
       <div class="pick" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
-        <div><div class="t">${a.activity_name} ${acceptanceNewIds.has(a.acceptance_activity_id) ? '<span class="badge new">Mới</span> ' : ''}${acceptanceActivityBadge(a)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}<div class="s event-time">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div></div>
+        <div><div class="t">${a.activity_name} ${isRecentlyCreated(a) ? newActivityTag(a) + ' ' : ''}${acceptanceActivityBadge(a)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}<div class="s event-time">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div></div>
         ${canCreate ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : ''}
       </div>`).join('')}</div>`;
 }
@@ -2054,29 +2085,53 @@ function reportProgress(done, total) {
 }
 
 function renderReportDetails(detail) {
-  const activityItem = (activity, kind) => {
+  const activityItem = activity => {
     const done = activity.completed;
-    const status = kind === 'checkin'
-      ? (activity.action_type === 'checkout' ? 'Đã check out' : 'Đã check in')
-      : (activity.status ? statusLabel(activity.status) : 'Đã gửi');
     return `<div class="report-detail-item ${done ? '' : 'missing'}">
       <span class="mark">${done ? '✓' : '!'}</span>
       <div><b>${activity.checkpoint_name || activity.activity_name}</b>
-      <div class="meta">${done ? `${status} · ${fmtDate(activity.recorded_at)}` : 'Chưa ghi nhận — cần nhắc'}</div></div>
+      <div class="meta">${done ? 'Đã ghi nhận' : 'Chưa ghi nhận'}</div></div>
     </div>`;
   };
   const checkinDone = detail.checkins.filter(activity => activity.completed).length;
   const acceptanceDone = detail.acceptances.filter(activity => activity.completed).length;
   return `<div class="report-detail">
-    <div class="report-detail-group"><div class="report-detail-title">Check in đã ghi nhận (${checkinDone}/${detail.checkins.length})</div>${detail.checkins.length ? detail.checkins.map(activity => activityItem(activity, 'checkin')).join('') : '<div class="hint">Không có hoạt động Check in trong tháng.</div>'}</div>
-    <div class="report-detail-group"><div class="report-detail-title">Nghiệm thu đã ghi nhận (${acceptanceDone}/${detail.acceptances.length})</div>${detail.acceptances.length ? detail.acceptances.map(activity => activityItem(activity, 'acceptance')).join('') : '<div class="hint">Không có hoạt động nghiệm thu trong tháng.</div>'}</div>
+    <div class="report-detail-group"><div class="report-detail-title">Check in đã ghi nhận (${checkinDone}/${detail.checkins.length})</div>${detail.checkins.length ? detail.checkins.map(activityItem).join('') : '<div class="hint">Không có hoạt động Check in trong tháng.</div>'}</div>
+    <div class="report-detail-group"><div class="report-detail-title">Nghiệm thu đã ghi nhận (${acceptanceDone}/${detail.acceptances.length})</div>${detail.acceptances.length ? detail.acceptances.map(activityItem).join('') : '<div class="hint">Không có hoạt động nghiệm thu trong tháng.</div>'}</div>
   </div>`;
 }
 
-function toggleAcceptanceReportDetails(encodedUsername) {
+// Bộ lọc báo cáo (giữ khi đổi tháng / mở chi tiết; lọc phía trình duyệt).
+let acceptanceReportData = null;     // kết quả getMonthlyActivityReport của tháng đang xem
+let acceptanceReportDetail = null;   // chi tiết của nhân viên đang mở
+let reportSearch = '';
+let reportCompletion = 'all';        // all | full | missing
+let reportRegion = '';
+let reportBranch = '';
+
+function reportSetSearch(v) { reportSearch = v; rerenderPreservingFocus(renderAcceptanceReportView); }
+function reportSetCompletion(v) { reportCompletion = v; renderAcceptanceReportView(); }
+function reportSetRegion(v) {
+  reportRegion = v;
+  // Chi nhánh đang chọn không thuộc vùng mới -> bỏ chọn chi nhánh.
+  const branch = (acceptanceReportData.branches || []).find(b => b.branch_code === reportBranch);
+  if (v && branch && branch.region_code !== v) reportBranch = '';
+  renderAcceptanceReportView();
+}
+function reportSetBranch(v) { reportBranch = v; renderAcceptanceReportView(); }
+
+async function toggleAcceptanceReportDetails(encodedUsername) {
   const username = decodeURIComponent(encodedUsername);
   acceptanceReportOpenUsername = acceptanceReportOpenUsername === username ? null : username;
-  renderAcceptanceReport();
+  acceptanceReportDetail = null;
+  renderAcceptanceReportView();
+  if (!acceptanceReportOpenUsername) return;
+  try {
+    const detail = await api('getMonthlyActivityReportDetails', { username: state.user.username, month: acceptanceReportData.month, target_username: username });
+    if (acceptanceReportOpenUsername !== username) return; // đã đóng/mở người khác trong lúc chờ
+    acceptanceReportDetail = detail;
+    renderAcceptanceReportView();
+  } catch (e) { alert(e.message); }
 }
 
 async function renderAcceptanceReport() {
@@ -2088,39 +2143,84 @@ async function renderAcceptanceReport() {
     <div class="loading-block"><div class="spin"></div></div>`;
   buildReportMonthPicker();
   try {
-    const report = await api('getMonthlyActivityReport', { username: state.user.username, month: acceptanceReportMonth });
-    const rows = report.rows || [];
-    const openUsername = acceptanceReportOpenUsername;
-    const openDetail = openUsername ? await api('getMonthlyActivityReportDetails', { username: state.user.username, month: report.month, target_username: openUsername }) : null;
-    const totalCheckins = rows.reduce((sum, r) => sum + Number(r.checkin_activities || 0), 0);
-    const totalAcceptances = rows.reduce((sum, r) => sum + Number(r.acceptance_activities || 0), 0);
-    const scopeLabel = state.user.role === 'SM' ? 'Nhân viên thuộc phạm vi quản lý' : 'Toàn bộ nhân viên';
-    if (!rows.length) {
-      wrap.innerHTML = `<div class="card"><div class="eyebrow">${scopeLabel}</div><div class="empty"><div class="big">📊</div>Chưa có nhân viên trong phạm vi báo cáo.</div></div>`;
-      return;
-    }
+    acceptanceReportData = await api('getMonthlyActivityReport', { username: state.user.username, month: acceptanceReportMonth });
+    acceptanceReportDetail = acceptanceReportOpenUsername
+      ? await api('getMonthlyActivityReportDetails', { username: state.user.username, month: acceptanceReportData.month, target_username: acceptanceReportOpenUsername }).catch(() => null)
+      : null;
+    renderAcceptanceReportView();
+  } catch (e) {
+    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+  }
+}
+
+function reportRowTotals(r) {
+  const done = Number(r.checkin_activities) + Number(r.acceptance_activities);
+  const expected = Number(r.checkin_total) + Number(r.acceptance_total);
+  return { done, expected, full: done >= expected };
+}
+
+function renderAcceptanceReportView() {
+  const wrap = document.getElementById('acceptance-report-content');
+  const report = acceptanceReportData;
+  const regions = report.regions || [];
+  const branches = report.branches || [];
+  const branchOptions = reportRegion ? branches.filter(b => b.region_code === reportRegion) : branches;
+  const allRows = report.rows || [];
+  const rows = filterRows(allRows, reportSearch, ['full_name', 'username'])
+    .filter(r => reportCompletion === 'all' || (reportCompletion === 'full') === reportRowTotals(r).full)
+    .filter(r => !reportRegion || (r.region_codes || []).includes(reportRegion))
+    .filter(r => !reportBranch || r.branch_code === reportBranch);
+  const openUsername = acceptanceReportOpenUsername;
+  const detailHtml = () => acceptanceReportDetail
+    ? renderReportDetails(acceptanceReportDetail)
+    : '<div class="loading-block"><div class="spin"></div></div>';
+
+  const chip = (value, label) =>
+    `<button class="activity-filter ${reportCompletion === value ? 'active' : ''}" onclick="reportSetCompletion('${value}')">${label}</button>`;
+  const toolbar = `
+    <div class="card admin-toolbar report-toolbar">
+      <div class="report-field"><div class="eyebrow">Tháng báo cáo</div>${reportMonthPickerHtml(report.month)}</div>
+      <div class="report-field"><div class="eyebrow">Vùng</div>
+        <select id="report-region" onchange="reportSetRegion(this.value)">
+          <option value="">Tất cả vùng</option>
+          ${regions.map(rg => `<option value="${rg.region_code}" ${rg.region_code === reportRegion ? 'selected' : ''}>${rg.region_name} (${rg.region_code})</option>`).join('')}
+        </select></div>
+      <div class="report-field"><div class="eyebrow">Chi nhánh</div>
+        <select id="report-branch" onchange="reportSetBranch(this.value)">
+          <option value="">Tất cả chi nhánh</option>
+          ${branchOptions.map(b => `<option value="${b.branch_code}" ${b.branch_code === reportBranch ? 'selected' : ''}>${b.branch_name}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="activity-toolbar" style="margin-top:14px;">
+      <input id="report-search" placeholder="🔍 Tìm theo tên hoặc username..." value="${reportSearch}" oninput="reportSetSearch(this.value)">
+    </div>
+    <div class="activity-filters" aria-label="Lọc theo mức độ hoàn thành">${chip('all', 'Tất cả') + chip('full', 'Đủ') + chip('missing', 'Thiếu')}</div>`;
+
+  let body;
+  if (!allRows.length) {
+    body = `<div class="card"><div class="empty"><div class="big">📊</div>Chưa có nhân viên trong phạm vi báo cáo.</div></div>`;
+  } else if (!rows.length) {
+    body = `<div class="card"><div class="empty">Không có nhân viên nào khớp bộ lọc.</div></div>`;
+  } else {
     const tableRows = rows.map(r => {
       const isOpen = r.username === openUsername;
       const encodedUsername = encodeURIComponent(r.username);
-      const totalDone = Number(r.checkin_activities) + Number(r.acceptance_activities);
-      const totalExpected = Number(r.checkin_total) + Number(r.acceptance_total);
-      return `<tr class="report-row ${isOpen ? 'open' : ''}" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${reportProgress(r.checkin_activities, r.checkin_total)}</td><td class="num mono">${reportProgress(r.acceptance_activities, r.acceptance_total)}</td><td class="num mono">${reportProgress(totalDone, totalExpected)}</td></tr>${isOpen ? `<tr class="report-detail-row"><td colspan="4">${renderReportDetails(openDetail)}</td></tr>` : ''}`;
+      const { done, expected } = reportRowTotals(r);
+      return `<tr class="report-row ${isOpen ? 'open' : ''}" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${reportProgress(r.checkin_activities, r.checkin_total)}</td><td class="num mono">${reportProgress(r.acceptance_activities, r.acceptance_total)}</td><td class="num mono">${reportProgress(done, expected)}</td><td class="toggle-cell" aria-hidden="true"></td></tr>${isOpen ? `<tr class="report-detail-row"><td colspan="5">${detailHtml()}</td></tr>` : ''}`;
     }).join('');
     const cards = rows.map(r => {
       const isOpen = r.username === openUsername;
       const encodedUsername = encodeURIComponent(r.username);
-      return `<div class="row" style="cursor:pointer;" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username} · Check in ${r.checkin_activities}/${r.checkin_total} · Nghiệm thu ${r.acceptance_activities}/${r.acceptance_total}</div></div><div class="r">${isOpen ? '⌃' : '⌄'}</div></div>${isOpen ? renderReportDetails(openDetail) : ''}`;
+      return `<div class="row" style="cursor:pointer;" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username} · Check in ${r.checkin_activities}/${r.checkin_total} · Nghiệm thu ${r.acceptance_activities}/${r.acceptance_total}</div></div><div class="r">${isOpen ? '⌃' : '⌄'}</div></div>${isOpen ? detailHtml() : ''}`;
     }).join('');
-    wrap.innerHTML = `
-      <div class="card admin-toolbar"><div style="min-width:200px;"><div class="eyebrow" style="margin-bottom:6px;">Tháng báo cáo</div>${reportMonthPickerHtml(report.month)}</div></div>
-      <div class="hint" style="margin:14px 0 10px;">${scopeLabel} · Check in tính theo hoạt động khác nhau; Nghiệm thu tính theo lần gửi.</div>
-      <div class="btn-row" style="margin:0 0 14px;"><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Hoạt động Check in</div><div style="font-size:24px;font-weight:800;">${totalCheckins}</div></div><div class="card" style="flex:1;padding:14px;"><div class="eyebrow">Lần nghiệm thu</div><div style="font-size:24px;font-weight:800;">${totalAcceptances}</div></div></div>
+    body = `
       <div class="card history-cards">${cards}</div>
-      <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
-    buildReportMonthPicker();
-  } catch (e) {
-    wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
+      <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th><th class="toggle-cell"></th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
   }
+  wrap.innerHTML = toolbar + body;
+  buildReportMonthPicker();
+  buildCustomSelect(document.getElementById('report-region'));
+  buildCustomSelect(document.getElementById('report-branch'));
 }
 
 function acceptanceRowsSetPage(p) { acceptanceRowsPage = p; renderAcceptanceRows(); }
@@ -2384,6 +2484,7 @@ let acSearch = '';
 let acRoleFilter = '';
 let acRegionFilter = '';
 let acCacheRegions = [];
+let acCacheBranches = [];
 function acSetPage(p) { acPage = p; rerenderPreservingFocus(renderAccountsView); }
 function acSetSearch(v) { acSearch = v; acPage = 1; rerenderPreservingFocus(renderAccountsView); }
 function acSetRoleFilter(v) { acRoleFilter = v; acPage = 1; renderAccountsView(); }
@@ -2396,7 +2497,7 @@ async function renderAdminAccounts(editUsername) {
   const wrap = document.getElementById('admin-tab-content');
   wrap.innerHTML = '<div class="loading-block"><div class="spin"></div></div>';
   try {
-    [adminAccountsCache, acCacheRegions] = await Promise.all([api('adminListAccounts'), api('adminListRegions')]);
+    [adminAccountsCache, acCacheRegions, acCacheBranches] = await Promise.all([api('adminListAccounts'), api('adminListRegions'), api('adminListBranches')]);
     renderAccountsView();
   } catch (e) {
     wrap.innerHTML = `<div class="banner err">${e.message}</div>`;
@@ -2431,6 +2532,13 @@ function renderAccountsView() {
           <input id="ac-regions" placeholder="vd: V10,V16" value="${editing ? (editing.region_codes || '') : ''}">
           <div class="hint" id="ac-region-hint"></div>
         </div>
+        <div id="ac-branch-field" style="display:none;">
+          <label>Chi nhánh</label>
+          <select id="ac-branch">
+            <option value="">— Chưa gán chi nhánh —</option>
+            ${acCacheBranches.map(b => `<option value="${b.branch_code}" ${editing && editing.branch_code === b.branch_code ? 'selected' : ''}>${b.branch_name} (${b.region_code})</option>`).join('')}
+          </select>
+        </div>
         <div class="btn-row" style="margin-top:16px;">
           <button class="btn btn-primary" onclick="saveAccount(event)">${editing ? 'Cập nhật tài khoản' : 'Tạo tài khoản'}</button>
           <button class="btn btn-outline" onclick="acShowList()">Hủy</button>
@@ -2439,6 +2547,7 @@ function renderAccountsView() {
       </div>`;
     if (editing) document.getElementById('ac-role').value = editing.role;
     buildCustomSelect(document.getElementById('ac-role'));
+    buildCustomSelect(document.getElementById('ac-branch'));
     toggleAccountFields();
     if (editing) {
       const mgrSel = document.getElementById('ac-manager');
@@ -2506,6 +2615,7 @@ function toggleAccountFields() {
 
   const showRegion = (role === 'SA' || role === 'SM');
   document.getElementById('ac-region-field').style.display = showRegion ? 'block' : 'none';
+  document.getElementById('ac-branch-field').style.display = showRegion ? 'block' : 'none';
   if (showRegion) {
     document.getElementById('ac-region-label').innerText = role === 'SM' ? 'Vùng phụ trách (mã vùng, phân cách dấu phẩy)' : 'Vùng phụ trách (mã vùng, phân cách dấu phẩy — không bắt buộc)';
     document.getElementById('ac-region-hint').innerText = role === 'SA' ? 'Để trống nếu SA dùng chung toàn bộ vùng của SM quản lý mình.' : '';
@@ -2535,6 +2645,7 @@ async function saveAccount(evt) {
     role: document.getElementById('ac-role').value,
     manager_username: document.getElementById('ac-manager') ? document.getElementById('ac-manager').value.trim() : '',
     region_codes: document.getElementById('ac-regions') ? document.getElementById('ac-regions').value.trim() : '',
+    branch_code: ['SA', 'SM'].includes(document.getElementById('ac-role').value) ? document.getElementById('ac-branch').value : '',
   };
   if (!editing) payload.password = password;
   if (!username || (!editing && !password) || !payload.full_name) {
