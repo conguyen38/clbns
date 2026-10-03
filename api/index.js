@@ -8,6 +8,24 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Migration nhỏ tự chạy khi server khởi động (chỉ 1 lần mỗi instance): thêm
+// cột checkpoints.created_at nếu database chưa có. Hoạt động đã có từ trước
+// được gán mốc cũ để không bị báo là "Mới"; hoạt động tạo sau lấy now().
+let schemaReady = null;
+function ensureSchema(pool) {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      const { rows } = await pool.query(
+        `SELECT 1 FROM information_schema.columns WHERE table_name='checkpoints' AND column_name='created_at'`
+      );
+      if (rows.length) return;
+      await pool.query(`ALTER TABLE checkpoints ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT '2000-01-01T00:00:00Z'`);
+      await pool.query(`ALTER TABLE checkpoints ALTER COLUMN created_at SET DEFAULT now()`);
+    })().catch(err => { schemaReady = null; throw err; });
+  }
+  return schemaReady;
+}
+
 const CHECKPOINT_COLUMNS = `checkpoint_id, checkpoint_name, address, activity_type, lat, long, radius_m,
   event_start::text AS event_start, event_end::text AS event_end,
   checkin_start, checkin_end, checkout_start, checkout_end, created_at`;
@@ -625,6 +643,7 @@ module.exports = async (req, res) => {
     const fn = ACTIONS[body.action];
     if (!fn) throw new Error('Unknown action: ' + body.action);
     const pool = getPool();
+    await ensureSchema(pool);
     const data = await fn(pool, body.data || {});
     result = { ok: true, data };
   } catch (err) {
