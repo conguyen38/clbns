@@ -50,7 +50,7 @@
       background:var(--ink);color:#fff;padding:26px 20px;
       position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto;
     }
-    #shell.authed #app{flex:1;max-width:none;margin:0;min-height:100vh;}
+    #shell.authed #app{flex:1;min-width:0;max-width:none;margin:0;min-height:100vh;}
     #shell.authed .screen{padding:36px 44px 60px;}
     #shell.authed .screen > div{max-width:1040px;width:100%;margin-left:auto;margin-right:auto;}
     #shell.authed .home-logout-mobile{display:none;}
@@ -182,7 +182,7 @@
   .cs-option.selected{background:var(--ink);color:#fff;font-weight:600;}
 
   /* Date / time — recolor the native picker glyph toward theme ink instead of default black */
-  input[type="date"],input[type="time"]{cursor:pointer;}
+  input[type="date"],input[type="time"],input[type="datetime-local"]{cursor:pointer;min-width:0;display:block;}
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator{
     filter:invert(14%) sepia(29%) saturate(3207%) hue-rotate(180deg) brightness(95%) contrast(96%);
@@ -219,6 +219,9 @@
   .btn-ghost{background:transparent;color:var(--slate);font-weight:600;text-transform:none;font-family:'Roboto',sans-serif;font-size:13px;}
   .btn[disabled]{opacity:0.45;pointer-events:none;}
   .btn-row{display:flex;gap:10px;}
+  /* Cho phép cột co lại: ô date/time có độ rộng tối thiểu riêng của trình
+     duyệt, không có min-width:0 thì ô thứ 2 tràn ra ngoài trên điện thoại. */
+  .btn-row > *{min-width:0;}
   .btn-row .btn{flex:1;}
 
   /* Check in/out chooser */
@@ -502,6 +505,11 @@
         <div><div class="t">Nghiệm thu<span class="nav-dot" id="home-acceptance-dot" title="Có nghiệm thu bị từ chối" hidden></span></div><div class="d">Gửi ảnh chụp màn hình & duyệt hoạt động</div></div>
         <div class="chev">›</div>
       </div>
+      <div class="tap-card" id="home-report-card" style="display:none;" onclick="goReport()">
+        <div class="icon blue">📊</div>
+        <div><div class="t">Báo cáo</div><div class="d">Mức độ tham gia hoạt động theo tháng</div></div>
+        <div class="chev">›</div>
+      </div>
       <div class="tap-card" id="home-admin-card" style="display:none;" onclick="goAdmin()">
         <div class="icon slate">⚙️</div>
         <div><div class="t">Quản trị</div><div class="d">Tài khoản, vùng, điểm checkin</div></div>
@@ -509,7 +517,11 @@
       </div>
       </div>
     </div>
-    <div class="home-logout-mobile" style="margin-top:auto;padding-top:20px;">
+    <!-- Điện thoại không có sidebar -> các mục tài khoản đặt ở cuối trang chủ. -->
+    <div class="home-logout-mobile home-account-links" style="margin-top:auto;padding-top:20px;">
+      <button class="btn btn-ghost" id="home-return-admin-link" style="display:none;" onclick="returnToAdmin()">↩ Về tài khoản Admin</button>
+      <button class="btn btn-ghost" id="home-switch-link" style="display:none;" onclick="openAccountSwitcher()">🔀 Chuyển tài khoản (test)</button>
+      <button class="btn btn-ghost" onclick="openPasswordModal()">🔑 Đổi mật khẩu</button>
       <button class="btn btn-ghost" onclick="logout()">Đăng xuất</button>
     </div>
   </div>
@@ -1037,6 +1049,9 @@ function showScreen(id) {
   document.getElementById('sidebar-report-link').style.display = ['SM', 'Admin'].includes(state.user.role) ? 'flex' : 'none';
   document.getElementById('sidebar-switch-link').style.display = (state.user.role === 'Admin' || state.impersonatorAdmin) ? 'flex' : 'none';
   document.getElementById('sidebar-return-admin-link').style.display = state.impersonatorAdmin ? 'flex' : 'none';
+  document.getElementById('home-report-card').style.display = ['SM', 'Admin'].includes(state.user.role) ? 'flex' : 'none';
+  document.getElementById('home-switch-link').style.display = (state.user.role === 'Admin' || state.impersonatorAdmin) ? 'block' : 'none';
+  document.getElementById('home-return-admin-link').style.display = state.impersonatorAdmin ? 'block' : 'none';
   const activeNav = SIDEBAR_NAV_MAP[id];
   document.querySelectorAll('.sb-link[data-nav]').forEach(el => el.classList.toggle('active', el.dataset.nav === activeNav));
 }
