@@ -281,9 +281,6 @@ ACTIONS.getActivityCheckStatus = async (pool, data) => {
   const checkin = rows.find(r => r.action_type === 'checkin') || null;
   return {
     next_action: awaitingCheckout ? 'checkout' : 'checkin',
-    // Trả lại giờ check in gần nhất để giao diện khóa ô Check in và hiển thị
-    // chính xác thời điểm nhân viên đã thực hiện thao tác này.
-    checkin_timestamp: awaitingCheckout ? last.timestamp : null,
     checkin,
     checkout
   };
@@ -323,15 +320,9 @@ ACTIONS.submitActivityLog = async (pool, data) => {
   return { valid, time_valid: timeValid, gps_valid: isOffline ? gpsValid : null, distance_m: dist, radius_m: isOffline ? Number(cp.radius_m) : null };
 };
 
-ACTIONS.getCheckinPhoto = async (pool, data) => {
-  const { rows } = await pool.query('SELECT photo_url FROM checkins WHERE checkin_id=$1', [data.checkin_id]);
-  if (!rows[0]) throw new Error('Không tìm thấy checkin.');
-  return { photo_url: rows[0].photo_url || '' };
-};
-
 // Cột photo_url chứa cả ảnh base64 (vài MB/checkin) -> danh sách CHỈ trả về cờ
 // has_photo, không kéo dữ liệu ảnh; ảnh thật chỉ tải riêng lúc bấm xem
-// (xem ACTIONS.getCheckinPhoto) để tránh listCheckins nặng và chậm.
+// (xem api/photo.js) để tránh listCheckins nặng và chậm.
 const CHECKIN_LIST_COLUMNS = `checkin_id, username, sa_name, checkpoint_id, checkpoint_name, action_type, lat, long, distance_m, radius_m, time_valid, valid, timestamp, photo_thumb, (photo_url <> '') AS has_photo`;
 
 ACTIONS.listCheckins = async (pool, data) => {

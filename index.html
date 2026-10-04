@@ -60,8 +60,7 @@
     #shell.authed #screen-home .topbar{display:none;}
     #shell.authed .topbar{position:static;box-shadow:none;background:transparent;color:var(--ink);padding:0 0 22px;margin:0;justify-content:flex-start;}
     #shell.authed .topbar .brand .name{color:var(--ink);}
-    #shell.authed .topbar .brand .sub{color:var(--slate);}
-    #shell.authed .topbar button.back{color:var(--ink);padding:0 10px 0 0;}
+    #shell.authed .topbar button.back{color:var(--ink);}
     #shell.authed .topbar .userchip{display:none;}
     #shell.authed .topbar-chip{background:#fff;border-color:var(--line);color:var(--ink);margin-left:auto;}
     #shell.authed .topbar-chip:hover{background:var(--paper);}
@@ -79,9 +78,9 @@
   }
 
   /* Sidebar nav */
-  .sb-brand{padding:2px 10px 22px;}
+  /* padding-top đặt để logo nằm ngang hàng với tiêu đề trang bên phải. */
+  .sb-brand{padding:17px 10px 22px;}
   .sb-brand .name{font-weight:900;font-size:19px;letter-spacing:0.03em;}
-  .sb-brand .sub{font-size:10px;color:var(--slate-light);letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;}
   .sb-nav{display:flex;flex-direction:column;gap:2px;}
   .sb-link{display:flex;align-items:center;gap:11px;padding:11px 10px;border-radius:9px;background:none;border:none;color:var(--slate-light);font-family:'Roboto',sans-serif;font-size:14px;font-weight:600;text-align:left;cursor:pointer;width:100%;}
   .sb-link .sb-ic{font-size:16px;width:20px;text-align:center;}
@@ -104,7 +103,6 @@
     .login-wrap{flex-direction:row;min-height:100vh;}
     .login-brandpane{display:flex;flex-direction:column;justify-content:center;flex:1;background:var(--ink);color:#fff;padding:60px;position:relative;overflow:hidden;}
     .login-brandpane .lb-title{font-size:42px;font-weight:900;letter-spacing:0.02em;}
-    .login-brandpane .lb-sub{font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:var(--slate-light);margin-top:8px;}
     .login-brandpane .lb-desc{margin-top:26px;font-size:15px;line-height:1.6;color:var(--slate-light);max-width:380px;}
     .login-formpane{flex:1;padding:40px;max-width:480px;}
     .login-mobile-brand{display:none;}
@@ -112,10 +110,15 @@
 
   /* Top bar */
   .topbar{position:sticky;top:0;z-index:10;background:var(--ink);color:#fff;padding:16px 18px;display:flex;align-items:center;justify-content:flex-start;box-shadow:var(--shadow);margin:-20px -18px 0;}
-  .topbar .brand{display:flex;flex-direction:column;line-height:1;margin-left:10px;}
+  /* min-height = chiều cao nút "Lịch sử" -> thanh tiêu đề cao bằng nhau ở mọi
+     trang (có hay không có nút), tiêu đề không bị nhảy vị trí khi chuyển trang. */
+  .topbar .brand{display:flex;flex-direction:column;justify-content:center;min-height:37px;line-height:1;margin-left:4px;}
   .topbar .brand .name{font-family:'Roboto',sans-serif;font-weight:900;font-size:19px;letter-spacing:0.03em;}
-  .topbar .brand .sub{font-size:10px;color:var(--slate-light);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
-  .topbar button.back{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 8px 0 0;}
+  /* Nút quay lại: icon chevron (cùng kiểu mũi tên của ô chọn), căn giữa theo
+     tiêu đề; mép mũi tên thẳng với mép nội dung bên dưới. */
+  .topbar button.back{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;margin-left:-12px;padding:0;background:none;border:none;color:#fff;cursor:pointer;border-radius:8px;}
+  .topbar button.back::before{content:"";width:9px;height:14px;background-color:currentColor;-webkit-mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='14' viewBox='0 0 9 14'><path d='M7.5 1.5L2 7l5.5 5.5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/contain no-repeat;mask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='14' viewBox='0 0 9 14'><path d='M7.5 1.5L2 7l5.5 5.5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") center/contain no-repeat;}
+  .topbar button.back:hover{background:rgba(127,127,127,0.12);}
   .topbar-chip{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:12.5px;font-weight:600;border-radius:100px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;margin-left:auto;}
   .topbar-chip:hover{background:rgba(255,255,255,0.2);}
   .topbar .userchip{font-size:12px;color:var(--slate-light);text-align:right;margin-left:auto;}
@@ -169,6 +172,9 @@
   .cs-trigger::after{content:"";position:absolute;right:14px;top:50%;transform:translateY(-50%);width:12px;height:8px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-size:12px 8px;transition:transform .12s ease;}
   .cs-wrap.open .cs-trigger{outline:2px solid var(--amber);outline-offset:1px;border-color:var(--amber);}
   .cs-wrap.open .cs-trigger::after{transform:translateY(-50%) rotate(180deg);}
+  /* Chevron dùng chung (giống mũi tên của ô chọn) cho các nút mở/đóng. */
+  .chev-icon{display:inline-block;width:12px;height:8px;flex-shrink:0;vertical-align:middle;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%2364748B' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");background-repeat:no-repeat;background-size:12px 8px;transition:transform .15s ease;}
+  .chev-icon.open{transform:rotate(180deg);}
   .cs-menu{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);max-height:260px;overflow-y:auto;z-index:50;padding:6px;}
   .cs-wrap.open .cs-menu{display:block;}
   .cs-option{padding:10px 12px;border-radius:7px;font-size:14.5px;color:var(--ink-2);cursor:pointer;}
@@ -265,10 +271,11 @@
 
   /* Data table — real columns on tablet/desktop for list screens that are
      stacked "title/subtitle + badge" cards on mobile (e.g. Sitetour history).
-     Card markup is default; .dtable swaps in from 768px up. */
+     Card markup is default; .dtable swaps in from 1200px up (tablet còn hẹp
+     vì có sidebar, bảng nhiều cột sẽ bị bóp nên vẫn dùng card). */
   .dtable-wrap{display:none;overflow-x:auto;}
   .dtable{width:100%;border-collapse:collapse;}
-  @media (min-width:768px){
+  @media (min-width:1200px){
     .history-cards{display:none;}
     .dtable-wrap{display:block;}
     .dtable thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--slate);font-weight:700;padding:11px 14px;border-bottom:1.5px solid var(--line);word-break:break-word;}
@@ -280,10 +287,10 @@
        THU / TỔNG on wide screens. */
     .dtable th.num, .dtable td.num{text-align:left;}
     .dtable td.mono, .dtable td.nowrap{white-space:nowrap;}
+    .dtable .badge{white-space:nowrap;word-break:normal;}
     .report-row{cursor:pointer;}
     .dtable td.toggle-cell,.dtable th.toggle-cell{width:40px;text-align:right;}
-    .report-row td.toggle-cell::after{content:'⌄';display:inline-block;color:var(--slate);font-size:16px;transition:transform .15s ease;}
-    .report-row.open td.toggle-cell::after{transform:rotate(180deg);}
+    .report-row.open td.toggle-cell .chev-icon{transform:rotate(180deg);}
     .report-detail-row td{padding:0;background:#F7F8F8;}
   }
   .report-toolbar{align-items:flex-end;}
@@ -362,7 +369,11 @@
   .pager{display:flex;align-items:center;justify-content:center;gap:14px;padding:14px 10px 4px;margin-top:6px;border-top:1px solid var(--line);}
   .pager button{width:auto;padding:8px 14px;font-family:'Roboto',sans-serif;font-weight:600;font-size:13px;text-transform:none;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--ink-2);cursor:pointer;}
   .pager button:disabled{opacity:0.4;cursor:not-allowed;}
-  .pager-info{font-size:12.5px;color:var(--slate);white-space:nowrap;}
+  .pager{flex-wrap:wrap;gap:8px;}
+  .pager-nums{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;}
+  .pager .pager-num{min-width:36px;padding:8px 10px;}
+  .pager .pager-num.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .pager-gap{color:var(--slate);padding:0 2px;}
   .list-count{font-size:12.5px;color:var(--slate);text-align:left;margin:2px 4px 10px;}
 
   /* Admin list toolbar — search box + "Tạo mới" */
@@ -384,7 +395,8 @@
   .sort-dd{position:relative;flex-shrink:0;}
   .sort-btn{display:inline-flex;align-items:center;gap:6px;width:auto;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);font-family:'Roboto',sans-serif;font-size:12px;font-weight:700;cursor:pointer;}
   .sort-btn svg{width:16px;height:16px;flex-shrink:0;}
-  .sort-btn .caret{font-size:10px;color:var(--slate);}
+  .sort-btn .caret{margin-left:2px;}
+  .sort-dd.open .sort-btn .caret{transform:rotate(180deg);}
   .sort-dd .cs-menu{left:auto;right:0;min-width:170px;}
   .sort-dd.open .cs-menu{display:block;}
   @media (max-width:767px){
@@ -417,7 +429,7 @@
 <body>
 <div id="shell">
 <nav id="sidebar">
-  <div class="sb-brand"><div class="name">PROAGENT</div><div class="sub">Tracking Platform</div></div>
+  <div class="sb-brand"><div class="name">PROAGENT</div></div>
   <div class="sb-nav">
     <button class="sb-link" data-nav="home" onclick="goHome()"><span class="sb-ic">🏠</span>Trang chủ</button>
     <button class="sb-link" data-nav="sitetour" onclick="goSitetourList()"><span class="sb-ic">📍</span>Check in<span class="nav-dot" id="sb-checkin-dot" title="Có hoạt động mới" hidden></span></button>
@@ -441,13 +453,11 @@
     <div class="login-wrap">
       <div class="login-brandpane">
         <div class="lb-title">PROAGENT</div>
-        <div class="lb-sub">Tracking Platform</div>
         <div class="lb-desc">Nền tảng ghi nhận hoạt động thực địa — checkin điểm chỉ định bằng GPS &amp; ảnh, lập và duyệt biên bản gặp đối tác theo phân cấp SA → SM.</div>
       </div>
       <div class="login-formpane">
         <div style="text-align:center;margin-bottom:34px;" class="login-mobile-brand">
           <div class="display" style="font-size:30px;color:var(--ink);letter-spacing:0.02em;">PROAGENT</div>
-          <div style="font-size:11.5px;letter-spacing:0.2em;color:var(--slate);text-transform:uppercase;margin-top:2px;">Tracking Platform</div>
         </div>
         <div class="card">
           <div id="login-banner"></div>
@@ -473,7 +483,7 @@
   <!-- ===================== HOME ===================== -->
   <div class="screen" id="screen-home">
     <div class="topbar">
-      <div class="brand"><span class="name">PROAGENT</span><span class="sub">Tracking Platform</span></div>
+      <div class="brand"><span class="name">PROAGENT</span></div>
       <div class="userchip"><b id="home-username"></b><span id="home-role"></span></div>
     </div>
     <div style="padding-top:22px;">
@@ -507,8 +517,8 @@
   <!-- ===================== SITETOUR: pick checkpoint ===================== -->
   <div class="screen" id="screen-sitetour-list">
     <div class="topbar">
-      <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">CHECK IN</span><span class="sub">Chọn hoạt động</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goHome()"></button>
+      <div class="brand"><span class="name">CHECK IN</span></div>
       <button class="topbar-chip" onclick="goSitetourHistory()">🕐 Lịch sử</button>
     </div>
     <div style="padding-top:18px;">
@@ -525,8 +535,8 @@
   <!-- ===================== SITETOUR: admin quick-create activity ===================== -->
   <div class="screen" id="screen-sitetour-create">
     <div class="topbar">
-      <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name" id="sta-title">TẠO HOẠT ĐỘNG</span><span class="sub">Check in</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goSitetourList()"></button>
+      <div class="brand"><span class="name" id="sta-title">TẠO HOẠT ĐỘNG</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
@@ -571,8 +581,8 @@
   <!-- ===================== SITETOUR: capture ===================== -->
   <div class="screen" id="screen-sitetour-checkin">
     <div class="topbar">
-      <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name" id="st-checkin-action-title">CHECK IN</span><span class="sub" id="st-checkin-point-name">—</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goSitetourList()"></button>
+      <div class="brand"><span class="name" id="st-checkin-action-title">CHECK IN</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
@@ -631,7 +641,7 @@
   <div class="screen" id="screen-sitetour-result">
     <div class="topbar">
       <span></span>
-      <div class="brand"><span class="name">KẾT QUẢ</span><span class="sub">Check in/out</span></div>
+      <div class="brand"><span class="name">KẾT QUẢ</span></div>
       <span></span>
     </div>
     <div class="stamp-wrap" id="stamp-container"></div>
@@ -644,8 +654,8 @@
   <!-- ===================== SITETOUR: history ===================== -->
   <div class="screen" id="screen-sitetour-history">
     <div class="topbar">
-      <button class="back" onclick="goSitetourList()">‹</button>
-      <div class="brand"><span class="name">LỊCH SỬ</span><span class="sub">Check in/out đã ghi nhận</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goSitetourList()"></button>
+      <div class="brand"><span class="name">LỊCH SỬ</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" id="st-history-list"></div>
@@ -654,8 +664,8 @@
   <!-- ===================== ACCEPTANCE: home ===================== -->
   <div class="screen" id="screen-acceptance-home">
     <div class="topbar">
-      <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">NGHIỆM THU</span><span class="sub">Hoạt động & bằng chứng</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goHome()"></button>
+      <div class="brand"><span class="name">NGHIỆM THU</span></div>
       <button class="topbar-chip" onclick="goAcceptanceHistory()">🕐 Lịch sử</button>
     </div>
     <div style="padding-top:18px;">
@@ -667,8 +677,8 @@
   <!-- ===================== ACCEPTANCE: history ===================== -->
   <div class="screen" id="screen-acceptance-history">
     <div class="topbar">
-      <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name">LỊCH SỬ</span><span class="sub">Nghiệm thu đã gửi</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goAcceptanceHome()"></button>
+      <div class="brand"><span class="name">LỊCH SỬ</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" id="acceptance-history-list"></div>
@@ -677,8 +687,8 @@
   <!-- ===================== REPORT ===================== -->
   <div class="screen" id="screen-report">
     <div class="topbar">
-      <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">BÁO CÁO</span><span class="sub">Hoạt động theo tháng</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goHome()"></button>
+      <div class="brand"><span class="name">BÁO CÁO</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" id="acceptance-report-content"></div>
@@ -687,8 +697,8 @@
   <!-- ===================== ACCEPTANCE: new ===================== -->
   <div class="screen" id="screen-acceptance-new">
     <div class="topbar">
-      <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name">TẠO NGHIỆM THU</span><span class="sub" id="nt-activity-sub">Gửi ảnh chụp màn hình</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goAcceptanceHome()"></button>
+      <div class="brand"><span class="name">TẠO NGHIỆM THU</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" class="form-col">
@@ -723,8 +733,8 @@
   <!-- ===================== ACCEPTANCE: admin create activity ===================== -->
   <div class="screen" id="screen-acceptance-activity-new">
     <div class="topbar">
-      <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name" id="nta-title">TẠO HOẠT ĐỘNG</span><span class="sub">Nghiệm thu</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goAcceptanceHome()"></button>
+      <div class="brand"><span class="name" id="nta-title">TẠO HOẠT ĐỘNG</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;">
@@ -750,8 +760,8 @@
   <!-- ===================== ACCEPTANCE: detail ===================== -->
   <div class="screen" id="screen-acceptance-detail">
     <div class="topbar">
-      <button class="back" onclick="goAcceptanceHome()">‹</button>
-      <div class="brand"><span class="name">CHI TIẾT</span><span class="sub">Nghiệm thu</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goAcceptanceHome()"></button>
+      <div class="brand"><span class="name">CHI TIẾT</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;" id="acceptance-detail-body"></div>
@@ -760,8 +770,8 @@
   <!-- ===================== ADMIN ===================== -->
   <div class="screen" id="screen-admin">
     <div class="topbar">
-      <button class="back" onclick="goHome()">‹</button>
-      <div class="brand"><span class="name">QUẢN TRỊ</span><span class="sub">Accounts · Vùng · Chi nhánh</span></div>
+      <button class="back" aria-label="Quay lại" onclick="goHome()"></button>
+      <div class="brand"><span class="name">QUẢN TRỊ</span></div>
       <span></span>
     </div>
     <div style="padding-top:18px;">
@@ -935,7 +945,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLight
    page (clamping it if the list shrank); renderPager() builds the control,
    calling back `changeFnName(nextPage)` — the render function that owns
    that list's page-state variable and re-renders on click. */
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 function filterRows(rows, query, fields) {
   const q = (query || '').trim().toLowerCase();
   if (!q) return rows;
@@ -959,11 +969,26 @@ function sliceForPage(rows, page) {
   const start = (p - 1) * PAGE_SIZE;
   return { pageRows: rows.slice(start, start + PAGE_SIZE), page: p, totalPages, total: rows.length };
 }
+// Số trang hiển thị trên pager: luôn có trang đầu/cuối và các trang quanh
+// trang hiện tại, khoảng bị bỏ qua thay bằng "…".
+function pagerPageList(page, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const pages = new Set([1, totalPages, page - 1, page, page + 1]);
+  if (page <= 3) [2, 3, 4].forEach(n => pages.add(n));
+  if (page >= totalPages - 2) [totalPages - 3, totalPages - 2, totalPages - 1].forEach(n => pages.add(n));
+  const sorted = [...pages].filter(n => n >= 1 && n <= totalPages).sort((a, b) => a - b);
+  const out = [];
+  sorted.forEach((n, i) => { if (i && n - sorted[i - 1] > 1) out.push('…'); out.push(n); });
+  return out;
+}
 function renderPager(page, totalPages, total, changeFnName) {
   if (totalPages <= 1) return '';
+  const nums = pagerPageList(page, totalPages).map(n => n === '…'
+    ? '<span class="pager-gap">…</span>'
+    : `<button class="pager-num ${n === page ? 'active' : ''}" ${n === page ? 'aria-current="page"' : ''} onclick="${changeFnName}(${n})">${n}</button>`).join('');
   return `<div class="pager">
     <button ${page<=1?'disabled':''} onclick="${changeFnName}(${page-1})">‹ Trước</button>
-    <span class="pager-info">Trang ${page}/${totalPages}</span>
+    <span class="pager-nums">${nums}</span>
     <button ${page>=totalPages?'disabled':''} onclick="${changeFnName}(${page+1})">Sau ›</button>
   </div>`;
 }
@@ -1161,8 +1186,10 @@ let stCheckpointSearch = '';
 let stCheckpointNewIds = new Set(); // hoạt động check in mới trong lần mở danh sách này
 let stCheckpointFilter = 'all'; // all | pending | checked
 let stCheckpointSort = 'desc';  // desc = mới → cũ, asc = cũ → mới (theo thời gian diễn ra)
-function stCheckpointSetSearch(v) { stCheckpointSearch = v; rerenderPreservingFocus(renderCheckpointList); }
-function stCheckpointSetFilter(v) { stCheckpointFilter = v; stViewedFilters.add(v); renderCheckpointList(); }
+let stCheckpointPage = 1;
+function stCheckpointSetPage(p) { stCheckpointPage = p; renderCheckpointList(); }
+function stCheckpointSetSearch(v) { stCheckpointSearch = v; stCheckpointPage = 1; rerenderPreservingFocus(renderCheckpointList); }
+function stCheckpointSetFilter(v) { stCheckpointFilter = v; stCheckpointPage = 1; stViewedFilters.add(v); renderCheckpointList(); }
 let stViewedFilters = new Set(['all']); // tag lọc đã bấm xem trong lần mở danh sách này
 
 function checkpointMatchesFilter(cp, filter) {
@@ -1176,7 +1203,7 @@ function checkpointFilterHasDot(filter) {
   return !stViewedFilters.has(filter)
     && state.checkpoints.some(cp => stCheckpointNewIds.has(cp.checkpoint_id) && checkpointMatchesFilter(cp, filter));
 }
-function stCheckpointSetSort(v) { stCheckpointSort = v; renderCheckpointList(); }
+function stCheckpointSetSort(v) { stCheckpointSort = v; stCheckpointPage = 1; renderCheckpointList(); }
 
 const ST_SORT_OPTIONS = { desc: 'Mới → cũ', asc: 'Cũ → mới' };
 
@@ -1184,7 +1211,7 @@ const ST_SORT_OPTIONS = { desc: 'Mới → cũ', asc: 'Cũ → mới' };
 function sortDropdownHtml(current, onSelectFn) {
   return `<div class="sort-dd">
       <button type="button" class="sort-btn" aria-label="Sắp xếp: ${ST_SORT_OPTIONS[current]}" title="Sắp xếp theo thời gian"
-        onclick="this.parentElement.classList.toggle('open')">${SORT_ICON}<span class="sort-label">${ST_SORT_OPTIONS[current]}</span><span class="caret">▾</span></button>
+        onclick="this.parentElement.classList.toggle('open')">${SORT_ICON}<span class="sort-label">${ST_SORT_OPTIONS[current]}</span><span class="caret chev-icon"></span></button>
       <div class="cs-menu" role="menu">${Object.entries(ST_SORT_OPTIONS).map(([value, label]) =>
         `<div class="cs-option ${current === value ? 'selected' : ''}" role="menuitem" onclick="${onSelectFn}('${value}')">${label}</div>`).join('')}
       </div>
@@ -1196,7 +1223,7 @@ function renderCheckpointFilters() {
   const chip = (value, label) =>
     `<button class="activity-filter ${stCheckpointFilter === value ? 'active' : ''}" onclick="stCheckpointSetFilter('${value}')">${label}${checkpointFilterHasDot(value) ? '<span class="nav-dot chip-dot" title="Có hoạt động mới"></span>' : ''}</button>`;
   document.getElementById('st-checkpoint-filters').innerHTML = `
-    <span class="chip-group">${chip('all', 'Tất cả') + chip('pending', 'Chưa check in') + chip('checked', 'Đã check in')}</span>
+    <span class="chip-group">${chip('all', 'Tất cả') + chip('pending', 'Chưa check') + chip('checked', 'Đã check')}</span>
     ${sortDropdownHtml(stCheckpointSort, 'stCheckpointSetSort')}`;
 }
 
@@ -1221,6 +1248,7 @@ async function goSitetourList() {
   stCheckpointSearch = '';
   stCheckpointFilter = 'all';
   stCheckpointSort = 'desc';
+  stCheckpointPage = 1;
   document.getElementById('st-search-input').value = '';
   renderCheckpointFilters();
   document.getElementById('st-create-activity-btn').style.display = state.user.role === 'Admin' ? 'block' : 'none';
@@ -1337,25 +1365,26 @@ function renderCheckpointList() {
     return;
   }
   const isAdmin = state.user.role === 'Admin';
-  wrap.innerHTML = filtered.map(cp => `
+  const { pageRows, page, totalPages, total } = sliceForPage(filtered, stCheckpointPage);
+  wrap.innerHTML = pageRows.map(cp => `
     <div class="pick" onclick="selectCheckpoint('${cp.checkpoint_id}')">
       <div><div class="t">${cp.checkpoint_name}${activityTypeBadge(cp)}${isRecentlyCreated(cp) ? `<span style="margin-left:6px;">${newActivityTag(cp)}</span>` : ''}</div><div class="s">${cp.activity_type==='online' ? 'Không cần vị trí' : (cp.address || 'Chưa có địa chỉ')}</div><div class="s event-time">Thời gian diễn ra: ${fmtDateOnly(cp.event_start)} – ${fmtDateOnly(cp.event_end)}</div>${checkpointStatusTag(cp) ? `<div class="check-tag">${checkpointStatusTag(cp)}</div>` : ''}</div>
       ${isAdmin ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()">
         <button class="btn btn-ghost" style="padding:0;width:auto;" onclick="goSitetourCreateActivity('${cp.checkpoint_id}')">Sửa</button>
         <button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteSitetourActivity('${cp.checkpoint_id}', event)">Xóa</button>
       </div>` : ''}
-    </div>`).join('');
+    </div>`).join('') + renderPager(page, totalPages, total, 'stCheckpointSetPage');
 }
 
 let nextActivityAction = 'checkin';
 let selectedActivityAction = null; // thao tác đang mở trong màn chi tiết (null = chưa chọn)
 let retryingActivityAction = null; // thao tác không hợp lệ đang được làm lại
-let activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null, checkin: null, checkout: null };
+let activityCheckStatus = { next_action: 'checkin', checkin: null, checkout: null };
 
 async function selectCheckpoint(id) {
   state.selectedCheckpoint = state.checkpoints.find(c => c.checkpoint_id === id);
   nextActivityAction = 'checkin';
-  activityCheckStatus = { next_action: 'checkin', checkin_timestamp: null, checkin: null, checkout: null };
+  activityCheckStatus = { next_action: 'checkin', checkin: null, checkout: null };
   try {
     const status = await api('getActivityCheckStatus', { username: state.user.username, activity_id: id });
     activityCheckStatus = status;
@@ -1486,7 +1515,6 @@ function goCheckinCapture() {
   selectedActivityAction = null;
   retryingActivityAction = null;
   resetCaptureForm();
-  document.getElementById('st-checkin-point-name').innerText = state.selectedCheckpoint.checkpoint_name;
   document.getElementById('st-activity-name').innerText = state.selectedCheckpoint.checkpoint_name;
   document.getElementById('st-activity-time').innerText = `Thời gian diễn ra: ${fmtDateOnly(state.selectedCheckpoint.event_start)} – ${fmtDateOnly(state.selectedCheckpoint.event_end)}`;
   renderActivityActionCards();
@@ -1720,7 +1748,7 @@ function renderStHistory() {
             <td>${thumb(r)}</td>
             <td>${r.checkpoint_name}</td>
             <td class="nowrap">${actionTypeLabel(r)}</td>
-            <td>${r.sa_name || r.sa_username}</td>
+            <td class="nowrap">${r.sa_name || r.sa_username}</td>
             <td class="mono">${fmtDate(r.timestamp)}</td>
             <td class="num mono">${fmtDistance(r.distance_m)}</td>
             <td><span class="badge ${String(r.valid)==='true'||r.valid===true?'approved':'rejectedsm'}">${(String(r.valid)==='true'||r.valid===true)?'Hợp lệ':'Không hợp lệ'}</span></td>
@@ -1787,7 +1815,9 @@ let acceptanceActivitiesCache = [];
 let acceptanceActivitySearch = '';
 let acceptanceActivityFilter = 'all';
 let acceptanceActivitySort = 'desc'; // desc = mới → cũ, asc = cũ → mới (theo thời gian ghi nhận)
-function setAcceptanceActivitySort(value) { acceptanceActivitySort = value; renderAcceptanceActivitiesView(); }
+function setAcceptanceActivitySort(value) { acceptanceActivitySort = value; acceptanceActivityPage = 1; renderAcceptanceActivitiesView(); }
+let acceptanceActivityPage = 1;
+function setAcceptanceActivityPage(p) { acceptanceActivityPage = p; renderAcceptanceActivitiesView(); }
 let acceptanceSelectedActivityId = null;
 let acceptanceSelectedActivityName = '';
 let editingAcceptanceActivityId = null;
@@ -1891,9 +1921,31 @@ function setNavDot(section, on) {
   document.getElementById(`home-${section}-dot`).hidden = !on;
 }
 
+// Bản bị từ chối người dùng đã xem (bấm tag "Từ chối" hoặc mở hoạt động đó)
+// -> không còn báo chấm đỏ. Khóa gồm cả thời điểm gửi, nên nếu gửi lại rồi
+// lại bị từ chối thì sẽ báo lại.
+function rejectedKey(a) { return `${a.my_acceptance_id}@${a.my_submitted_at}`; }
+
+function seenRejectedKeys() {
+  try { return new Set(JSON.parse(localStorage.getItem(`proagent_seen_rejected_${state.user.username}`) || '[]')); }
+  catch (e) { return new Set(); }
+}
+
+function markRejectedSeen(activities) {
+  const keys = seenRejectedKeys();
+  activities.filter(a => acceptanceActivityState(a) === 'rejected').forEach(a => keys.add(rejectedKey(a)));
+  try { localStorage.setItem(`proagent_seen_rejected_${state.user.username}`, JSON.stringify([...keys])); }
+  catch (e) { /* bỏ qua */ }
+}
+
+function hasUnseenRejected(activities) {
+  const seen = seenRejectedKeys();
+  return (activities || []).some(a => acceptanceActivityState(a) === 'rejected' && !seen.has(rejectedKey(a)));
+}
+
 function updateAcceptanceAlert(activities) {
   const list = activities || [];
-  const hasRejected = list.some(a => acceptanceActivityState(a) === 'rejected');
+  const hasRejected = hasUnseenRejected(list);
   const hasNew = newActivityIds(list, 'acceptance_activity_id', 'acceptance').size > 0;
   setNavDot('acceptance', hasRejected || hasNew);
 }
@@ -1923,6 +1975,8 @@ async function renderAcceptanceActivities() {
     // lần mở này, chấm đỏ ở menu tắt ngay.
     acceptanceNewIds = newActivityIds(acceptanceActivitiesCache, 'acceptance_activity_id', 'acceptance');
     acceptanceViewedFilters = new Set([acceptanceActivityFilter]);
+    if (acceptanceActivityFilter === 'rejected') markRejectedSeen(acceptanceActivitiesCache);
+    acceptanceActivityPage = 1;
     markSeen('acceptance');
     updateAcceptanceAlert(acceptanceActivitiesCache);
     renderAcceptanceActivitiesView();
@@ -1933,12 +1987,18 @@ async function renderAcceptanceActivities() {
 
 function setAcceptanceActivitySearch(value) {
   acceptanceActivitySearch = value;
+  acceptanceActivityPage = 1;
   rerenderPreservingFocus(renderAcceptanceActivitiesView);
 }
 
 function setAcceptanceActivityFilter(value) {
   acceptanceActivityFilter = value;
+  acceptanceActivityPage = 1;
   acceptanceViewedFilters.add(value);
+  if (value === 'rejected') {
+    markRejectedSeen(acceptanceActivitiesCache);
+    updateAcceptanceAlert(acceptanceActivitiesCache);
+  }
   renderAcceptanceActivitiesView();
 }
 let acceptanceViewedFilters = new Set(['all']); // tag lọc đã bấm xem trong lần mở danh sách này
@@ -1949,7 +2009,7 @@ function acceptanceFilterHasDot(filter) {
   if (acceptanceViewedFilters.has(filter)) return false;
   return acceptanceActivitiesCache.some(a => {
     const st = acceptanceActivityState(a);
-    if (filter === 'rejected' && st === 'rejected') return true;
+    if (filter === 'rejected' && st === 'rejected' && hasUnseenRejected([a])) return true;
     return acceptanceNewIds.has(a.acceptance_activity_id) && (filter === 'all' || st === filter);
   });
 }
@@ -1977,11 +2037,12 @@ function renderAcceptanceActivitiesView() {
     wrap.innerHTML = `${toolbar}<div class="empty">Không tìm thấy hoạt động nào khớp.</div>`;
     return;
   }
-  wrap.innerHTML = `${toolbar}<div class="pick-grid">${activities.map(a => `
+  const { pageRows, page, totalPages, total } = sliceForPage(activities, acceptanceActivityPage);
+  wrap.innerHTML = `${toolbar}<div class="pick-grid">${pageRows.map(a => `
       <div class="pick" onclick="goAcceptanceNewForm(acceptanceActivitiesCache.find(x => x.acceptance_activity_id === '${a.acceptance_activity_id}'))">
         <div><div class="t">${a.activity_name} ${isRecentlyCreated(a) ? newActivityTag(a) + ' ' : ''}${acceptanceActivityBadge(a)}</div>${a.description ? `<div class="s">${a.description}</div>` : ''}<div class="s event-time">Thời gian ghi nhận: ${fmtDate(a.record_start)} – ${fmtDate(a.record_end)}</div></div>
         ${canCreate ? `<div style="display:flex;gap:10px;flex-shrink:0;" onclick="event.stopPropagation()"><button class="btn btn-ghost" style="padding:0;width:auto;" onclick="editAcceptanceActivity('${a.acceptance_activity_id}', event)">Sửa</button><button class="btn btn-ghost" style="padding:0;width:auto;color:var(--red);" onclick="deleteAcceptanceActivity('${a.acceptance_activity_id}', event)">Xóa</button></div>` : ''}
-      </div>`).join('')}</div>`;
+      </div>`).join('')}</div>${renderPager(page, totalPages, total, 'setAcceptanceActivityPage')}`;
 }
 
 function fmtDateTimeLocal(value) {
@@ -2058,6 +2119,7 @@ async function deleteAcceptanceActivity(id, evt) {
 
 function setAcceptanceReportMonth(month) {
   acceptanceReportMonth = month;
+  reportPage = 1;
   renderAcceptanceReport();
 }
 
@@ -2108,17 +2170,20 @@ let reportSearch = '';
 let reportCompletion = 'all';        // all | full | missing
 let reportRegion = '';
 let reportBranch = '';
+let reportPage = 1;
+function reportSetPage(p) { reportPage = p; renderAcceptanceReportView(); }
 
-function reportSetSearch(v) { reportSearch = v; rerenderPreservingFocus(renderAcceptanceReportView); }
-function reportSetCompletion(v) { reportCompletion = v; renderAcceptanceReportView(); }
+function reportSetSearch(v) { reportSearch = v; reportPage = 1; rerenderPreservingFocus(renderAcceptanceReportView); }
+function reportSetCompletion(v) { reportCompletion = v; reportPage = 1; renderAcceptanceReportView(); }
 function reportSetRegion(v) {
   reportRegion = v;
+  reportPage = 1;
   // Chi nhánh đang chọn không thuộc vùng mới -> bỏ chọn chi nhánh.
   const branch = (acceptanceReportData.branches || []).find(b => b.branch_code === reportBranch);
   if (v && branch && branch.region_code !== v) reportBranch = '';
   renderAcceptanceReportView();
 }
-function reportSetBranch(v) { reportBranch = v; renderAcceptanceReportView(); }
+function reportSetBranch(v) { reportBranch = v; reportPage = 1; renderAcceptanceReportView(); }
 
 async function toggleAcceptanceReportDetails(encodedUsername) {
   const username = decodeURIComponent(encodedUsername);
@@ -2202,20 +2267,22 @@ function renderAcceptanceReportView() {
   } else if (!rows.length) {
     body = `<div class="card"><div class="empty">Không có nhân viên nào khớp bộ lọc.</div></div>`;
   } else {
-    const tableRows = rows.map(r => {
+    const { pageRows, page, totalPages, total } = sliceForPage(rows, reportPage);
+    const tableRows = pageRows.map(r => {
       const isOpen = r.username === openUsername;
       const encodedUsername = encodeURIComponent(r.username);
       const { done, expected } = reportRowTotals(r);
-      return `<tr class="report-row ${isOpen ? 'open' : ''}" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${reportProgress(r.checkin_activities, r.checkin_total)}</td><td class="num mono">${reportProgress(r.acceptance_activities, r.acceptance_total)}</td><td class="num mono">${reportProgress(done, expected)}</td><td class="toggle-cell" aria-hidden="true"></td></tr>${isOpen ? `<tr class="report-detail-row"><td colspan="5">${detailHtml()}</td></tr>` : ''}`;
+      return `<tr class="report-row ${isOpen ? 'open' : ''}" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><td><b>${r.full_name || r.username}</b><div class="s">@${r.username}</div></td><td class="num mono">${reportProgress(r.checkin_activities, r.checkin_total)}</td><td class="num mono">${reportProgress(r.acceptance_activities, r.acceptance_total)}</td><td class="num mono">${reportProgress(done, expected)}</td><td class="toggle-cell" aria-hidden="true"><span class="chev-icon"></span></td></tr>${isOpen ? `<tr class="report-detail-row"><td colspan="5">${detailHtml()}</td></tr>` : ''}`;
     }).join('');
-    const cards = rows.map(r => {
+    const cards = pageRows.map(r => {
       const isOpen = r.username === openUsername;
       const encodedUsername = encodeURIComponent(r.username);
-      return `<div class="row" style="cursor:pointer;" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username} · Check in ${r.checkin_activities}/${r.checkin_total} · Nghiệm thu ${r.acceptance_activities}/${r.acceptance_total}</div></div><div class="r">${isOpen ? '⌃' : '⌄'}</div></div>${isOpen ? detailHtml() : ''}`;
+      return `<div class="row" style="cursor:pointer;" onclick="toggleAcceptanceReportDetails('${encodedUsername}')"><div class="l"><div class="t">${r.full_name || r.username}</div><div class="s">@${r.username} · Check in ${r.checkin_activities}/${r.checkin_total} · Nghiệm thu ${r.acceptance_activities}/${r.acceptance_total}</div></div><div class="r"><span class="chev-icon ${isOpen ? 'open' : ''}" aria-hidden="true"></span></div></div>${isOpen ? detailHtml() : ''}`;
     }).join('');
     body = `
       <div class="card history-cards">${cards}</div>
-      <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th><th class="toggle-cell"></th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+      <div class="card dtable-wrap" style="padding:0;"><table class="dtable"><thead><tr><th>Nhân viên</th><th class="num">Check in</th><th class="num">Nghiệm thu</th><th class="num">Tổng</th><th class="toggle-cell"></th></tr></thead><tbody>${tableRows}</tbody></table></div>
+      ${renderPager(page, totalPages, total, 'reportSetPage')}`;
   }
   wrap.innerHTML = toolbar + body;
   buildReportMonthPicker();
@@ -2256,6 +2323,9 @@ function genAcceptanceCode() {
 
 function goAcceptanceNewForm(prefill) {
   showScreen('screen-acceptance-new');
+  // Mở xem 1 hoạt động bị từ chối cũng tính là đã xem bản từ chối đó.
+  const opened = prefill && acceptanceActivitiesCache.find(a => a.acceptance_activity_id === prefill.acceptance_activity_id);
+  if (opened) { markRejectedSeen([opened]); updateAcceptanceAlert(acceptanceActivitiesCache); }
   banner('nt-banner','','');
   const isResubmission = !!(prefill && prefill.acceptance_id);
   state.acceptanceResubmitFrom = isResubmission ? prefill.acceptance_id : null;
@@ -2322,7 +2392,6 @@ function renderAcceptanceActivitySummary() {
   const activity = selectedAcceptanceActivity();
   const name = (activity && activity.activity_name) || acceptanceSelectedActivityName;
   document.getElementById('nt-activity-summary').hidden = !name;
-  document.getElementById('nt-activity-sub').innerText = name || 'Gửi ảnh chụp màn hình';
   if (!name) return;
   document.getElementById('nt-activity-name').innerText = name;
   document.getElementById('nt-activity-desc').innerText = activity ? (activity.description || '') : '';
