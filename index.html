@@ -2389,7 +2389,7 @@ function renderAcceptanceSubmissionState() {
       <div class="result-row"><span class="k">Gửi lúc</span><span class="v mono">${fmtDate(activity.my_submitted_at)}</span></div>
       <button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="openAcceptanceDetail('${existingId}')">Xem bản đã gửi</button>
       ${open && !acceptanceOverwriteMode ? `<button type="button" class="btn btn-primary" style="margin-top:10px;" onclick="startAcceptanceOverwrite()">↻ Gửi duyệt lại</button>` : ''}
-      ${open && acceptanceOverwriteMode ? `<div class="hint">Bản gửi lại sẽ thay thế bản đã gửi ở trên và quay về trạng thái chờ duyệt.</div>` : ''}`;
+      ${open && acceptanceOverwriteMode ? `<div class="hint">Bản gửi lại sẽ là một bản ghi mới (quay về trạng thái chờ duyệt); bản đã gửi ở trên vẫn được giữ nguyên trong Lịch sử.</div>` : ''}`;
   }
   document.getElementById('nt-closed-note').hidden = open;
   document.getElementById('nt-form').hidden = !open || (!!existingId && !acceptanceOverwriteMode);
@@ -2452,9 +2452,8 @@ async function submitAcceptanceNow() {
     description: document.getElementById('nt-description').value.trim(),
     screenshot_base64: state.acceptancePhotoBase64,
     screenshot_thumb_base64: state.acceptancePhotoThumbBase64,
-    resubmitted_from: state.acceptanceResubmitFrom || '',
-    acceptance_activity_id: acceptanceSelectedActivityId || '',
-    overwrite_acceptance_id: acceptanceOverwriteMode ? (selectedAcceptanceActivity() || {}).my_acceptance_id || '' : ''
+    resubmitted_from: acceptanceOverwriteMode ? ((selectedAcceptanceActivity() || {}).my_acceptance_id || '') : (state.acceptanceResubmitFrom || ''),
+    acceptance_activity_id: acceptanceSelectedActivityId || ''
   };
 
   isSubmittingAcceptance = true;
@@ -2465,7 +2464,7 @@ async function submitAcceptanceNow() {
 
   try {
     await api('createAcceptance', payload);
-    banner('nt-banner','ok', acceptanceOverwriteMode ? 'Đã gửi duyệt lại, bản cũ đã được thay thế.' : 'Đã gửi nghiệm thu đi duyệt.');
+    banner('nt-banner','ok', acceptanceOverwriteMode ? 'Đã gửi duyệt lại, bản cũ vẫn được giữ trong Lịch sử.' : 'Đã gửi nghiệm thu đi duyệt.');
     state.acceptanceResubmitFrom = null;
     setTimeout(goAcceptanceHistory, 900);
   } catch (e) {

@@ -428,22 +428,10 @@ ACTIONS.createAcceptance = async (pool, data) => {
   // nên nghiệm thu do họ tự tạo được coi là đã duyệt.
   const status = ['SM', 'Admin'].includes(acc.role) ? 'Approved' : 'PendingSM';
 
-  // Gửi duyệt lại cho hoạt động đã hoàn thành: ghi đè lên bản đã gửi trước
-  // đó (vẫn phải trong thời gian ghi nhận — đã kiểm tra ở trên) và quay lại
-  // chờ duyệt, thay vì tạo thêm bản mới.
-  if (data.overwrite_acceptance_id) {
-    if (!data.acceptance_activity_id) throw new Error('Thiếu hoạt động nghiệm thu.');
-    const result = await pool.query(
-      `UPDATE acceptances
-       SET acceptance_code=$3, description=$4, screenshot_url=$5, screenshot_thumb=$6, status=$7,
-           sm_note='', ssm_note='', created_at=now()
-       WHERE acceptance_id=$1 AND creator_username=$2 AND acceptance_activity_id=$8`,
-      [data.overwrite_acceptance_id, acc.username, data.acceptance_code || '', data.description || '',
-       data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.acceptance_activity_id]
-    );
-    if (!result.rowCount) throw new Error('Không tìm thấy bản nghiệm thu đã gửi.');
-    return { acceptance_id: data.overwrite_acceptance_id };
-  }
+  // Gửi duyệt lại cho hoạt động đã hoàn thành: luôn tạo một bản ghi MỚI (không
+  // ghi đè bản cũ) để Lịch sử giữ đủ mọi lần gửi — kể cả các lần bị từ chối
+  // trước đó — thay vì chỉ còn lại trạng thái gần nhất.
+  const resubmittedFrom = data.overwrite_acceptance_id || data.resubmitted_from || '';
 
   const acceptanceId = require('crypto').randomUUID();
   await pool.query(
@@ -451,7 +439,7 @@ ACTIONS.createAcceptance = async (pool, data) => {
        activity_name, description, screenshot_url, screenshot_thumb, status, sm_note, ssm_note, resubmitted_from, created_at, acceptance_activity_id)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'','', $11, now(), $12)`,
     [acceptanceId, data.acceptance_code || '', acc.username, acc.full_name, acc.role,
-     activityName, data.description || '', data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, data.resubmitted_from || '', data.acceptance_activity_id || null]
+     activityName, data.description || '', data.screenshot_base64 || '', data.screenshot_thumb_base64 || '', status, resubmittedFrom, data.acceptance_activity_id || null]
   );
   return { acceptance_id: acceptanceId };
 };
